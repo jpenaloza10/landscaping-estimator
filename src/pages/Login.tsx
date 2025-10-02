@@ -1,36 +1,41 @@
-import React, { useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginRequest, setToken } from "../lib/api";
+import { loginRequest, setToken, getToken } from "../lib/api";
 
-export default function Login() {
-    const nav = useNavigate();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [err, setErr] = useState("");
+export default function Login() {          
+  const nav = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
 
-    async function onSubmit(e) {
-        e.preventDefault();
-        setErr("");
-        setLoading(true);
+  useEffect(() => { if (getToken()) nav("/dashboard"); }, [nav]);
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setErr("");
+    setLoading(true);
+    try {
+      const { token } = await loginRequest(email, password);
+      setToken(token);
+      nav("/dashboard");
+    } catch (error) {
+      if (error instanceof Error) {
         try {
-            const { token } = await loginRequest(email, password);
-            setToken(token);    // Store JWT
-            nav("/dashboard");  // go to protected page
-        } catch (error) {
-            // Backend sends { message: "Invalid credentials"} or plain text
-            try {
-                const msg = JSON.parse(error.message).message;
-                setErr(msg || "Login failed");
-            } catch {
-                setErr(error.message || "Login failed");
-            }
-        } finally {
-            setLoading(false);
+          const parsed = JSON.parse(error.message) as { message?: string };
+          setErr(parsed.message || "Login failed");
+        } catch {
+          setErr(error.message || "Login failed");
         }
+      } else {
+        setErr("Login failed");
+      }
+    } finally {
+      setLoading(false);
     }
+  }
 
-    return (
+  return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-100 to-green-300">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
         <h1 className="text-2xl font-bold mb-6 text-center text-green-800">
@@ -81,5 +86,5 @@ export default function Login() {
         </p>
       </div>
     </div>
-    );
+  );
 }

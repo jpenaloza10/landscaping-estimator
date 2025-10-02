@@ -1,15 +1,15 @@
-import React from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getToken, clearToken } from "../lib/api";
 
 export default function Dashboard() {
   const nav = useNavigate();
-  const token = getToken();
 
-  if (!token) {
-    nav("/");
-    return null;
-  }
+  // Redirect to login if no token
+  useEffect(() => {
+    const token = getToken();
+    if (!token) nav("/");
+  }, [nav]);
 
   function logout() {
     clearToken();
