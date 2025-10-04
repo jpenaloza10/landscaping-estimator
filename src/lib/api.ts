@@ -1,8 +1,7 @@
-// src/lib/api.ts
 const BASE_URL = import.meta.env.VITE_API_URL as string | undefined;
 
 export function getToken(): string | null {
-  return localStorage.getItem("token"); // standardized key
+  return localStorage.getItem("token");
 }
 export function setToken(token: string): void {
   localStorage.setItem("token", token);
@@ -38,15 +37,18 @@ export async function api<T = unknown>(
 
   // Try to parse JSON error bodies
   const contentType = res.headers.get("content-type") || "";
-  const parseJson = async () => (contentType.includes("application/json") ? await res.json() : undefined);
+  const parseJson = async () =>
+    contentType.includes("application/json") ? await res.json() : undefined;
 
   if (!res.ok) {
     const errBody = await parseJson();
-    const msg = (errBody as any)?.error || (await res.text()).trim() || `HTTP ${res.status}`;
+    const msg =
+      (errBody as any)?.error || (await res.text()).trim() || `HTTP ${res.status}`;
     throw new Error(msg);
   }
 
   const data = await parseJson();
+  // when not JSON (rare), fall back to text
   return (data ?? (await res.text())) as T;
 }
 
@@ -80,9 +82,9 @@ export async function registerRequest(
 export interface Project {
   id: number;
   name: string;
-  description: string;     // backend requires it on create
-  location: string;        // backend requires it on create
-  created_at: string;      // ISO strings from backend
+  description: string;
+  location: string;
+  created_at: string;
   updated_at: string;
 }
 

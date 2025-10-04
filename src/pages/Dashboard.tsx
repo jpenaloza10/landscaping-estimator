@@ -1,18 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { apiFetch } from "../lib/api";
-
-type Project = {
-  id: number;
-  name: string;
-  description: string;
-  location: string;
-  created_at: string;
-};
+import { getProjects, type Project } from "../lib/api"; // Project type exported from api.ts (optional)
 
 export default function Dashboard() {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -20,15 +12,16 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await apiFetch("/api/projects", {}, token);
-        setProjects(data.projects);
+        // getProjects() already attaches token via api() -> localStorage
+        const list = await getProjects();
+        setProjects(list);
       } catch (e: any) {
-        setErr(e.message);
+        setErr(e.message || "Failed to load projects");
       } finally {
         setLoading(false);
       }
     })();
-  }, [token]);
+  }, []);
 
   return (
     <div className="max-w-5xl mx-auto p-6">
@@ -38,7 +31,7 @@ export default function Dashboard() {
           <p className="text-gray-600">Welcome, {user?.name}</p>
         </div>
         <Link
-          to="/dashboard/new"
+          to="/projects/new"  // <-- was /dashboard/new
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
         >
           New Project
