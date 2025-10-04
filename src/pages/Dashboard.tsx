@@ -1,37 +1,70 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { getToken, clearToken } from "../lib/api";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
+import { apiFetch } from "../lib/api";
+
+type Project = {
+  id: number;
+  name: string;
+  description: string;
+  location: string;
+  created_at: string;
+};
 
 export default function Dashboard() {
-  const nav = useNavigate();
+  const { token, user } = useAuth();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
-  // Redirect to login if no token
   useEffect(() => {
-    const token = getToken();
-    if (!token) nav("/");
-  }, [nav]);
-
-  function logout() {
-    clearToken();
-    nav("/");
-  }
+    (async () => {
+      try {
+        const data = await apiFetch("/api/projects", {}, token);
+        setProjects(data.projects);
+      } catch (e: any) {
+        setErr(e.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [token]);
 
   return (
-    <div className="min-h-screen p-6 bg-gray-100">
-      <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Dashboard</h2>
-          <button
-            onClick={logout}
-            className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
-          >
-            Logout
-          </button>
+    <div className="max-w-5xl mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-green-700">Dashboard</h1>
+          <p className="text-gray-600">Welcome, {user?.name}</p>
         </div>
-        <p className="mt-4 text-gray-700">
-          You are logged in. Token stored in localStorage.
-        </p>
+        <Link
+          to="/dashboard/new"
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+        >
+          New Project
+        </Link>
       </div>
+
+      {loading && <div>Loading projects…</div>}
+      {err && <div className="text-red-600">{err}</div>}
+      {!loading && projects.length === 0 && (
+        <div className="text-gray-500">No projects yet — create your first one.</div>
+      )}
+
+      <ul className="grid md:grid-cols-2 gap-4">
+        {projects.map((p) => (
+          <li key={p.id} className="bg-white rounded-xl shadow p-4">
+            <div className="font-semibold">{p.name}</div>
+            <div className="text-sm text-gray-600">{p.location}</div>
+            <div className="text-sm text-gray-500 mt-1 whitespace-pre-line line-clamp-3">
+              {p.description}
+            </div>
+            <div className="text-xs text-gray-400 mt-2">
+              Created: {new Date(p.created_at).toLocaleString()}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

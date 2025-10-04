@@ -109,5 +109,65 @@ app.get("/api/auth/me", auth, async (req: Request, res: Response) => {
   return res.json({ user });
 });
 
+// ───────────────────────────────────────────────────────────
+// PROJECTS (auth required)
+// ───────────────────────────────────────────────────────────
+
+// Create Project
+type CreateProjectBody = { name?: string; description?: string; location?: string };
+app.post(
+  "/api/projects",
+  auth,
+  async (req: Request<{}, {}, CreateProjectBody>, res: Response) => {
+    try {
+      if (!req.user?.userId) return res.status(401).json({ error: "Unauthorized" });
+      const { name, description, location } = req.body ?? {};
+
+      if (!name || !description || !location) {
+        return res.status(400).json({ error: "name, description, location are required" });
+      }
+
+      const project = await prisma.project.create({
+        data: {
+          user_id: req.user.userId,
+          name,
+          description,
+          location,
+        },
+        select: {
+          id: true, name: true, description: true, location: true,
+          created_at: true, updated_at: true,
+        },
+      });
+
+      return res.status(201).json({ project });
+    } catch (e) {
+      console.error("Create project error:", e);
+      return res.status(500).json({ error: "Failed to create project" });
+    }
+  }
+);
+
+// List Projects for current user
+app.get("/api/projects", auth, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const projects = await prisma.project.findMany({
+      where: { user_id: req.user.userId },
+      select: {
+        id: true, name: true, description: true, location: true,
+        created_at: true, updated_at: true,
+      },
+      orderBy: { created_at: "desc" }
+    });
+
+    return res.json({ projects });
+  } catch (e) {
+    console.error("List projects error:", e);
+    return res.status(500).json({ error: "Failed to list projects" });
+  }
+});
+
 const port = Number(process.env.PORT || 4000);
 app.listen(port, () => console.log(`API listening on http://localhost:${port}`));
