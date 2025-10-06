@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { getProjects, type Project } from "../lib/api"; // Project type exported from api.ts (optional)
+import { getProjects, type Project } from "../lib/api"; 
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -31,7 +31,7 @@ export default function Dashboard() {
           <p className="text-gray-600">Welcome, {user?.name}</p>
         </div>
         <Link
-          to="/projects/new"  // <-- was /dashboard/new
+          to="/projects/new"  
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
         >
           New Project
