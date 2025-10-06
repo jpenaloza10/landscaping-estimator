@@ -7,13 +7,48 @@ import { signToken, auth } from "./auth";
 import { SafeUser } from "./types/user";
 
 const app = express();
-app.use(cors({
-  origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"],
+
+
+const STATIC_ALLOWED_ORIGINS = new Set<string>([
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://landscaping-estimator-rust.vercel.app", // Vercel prod
+]);
+
+// Optional: add comma-separated extra origins via env
+if (process.env.ALLOWED_ORIGINS) {
+  for (const o of process.env.ALLOWED_ORIGINS.split(",").map(s => s.trim()).filter(Boolean)) {
+    STATIC_ALLOWED_ORIGINS.add(o);
+  }
+}
+
+const VERCEL_PREVIEWS_ENABLED = true;
+const VERCEL_REGEX = /\.vercel\.app$/;
+
+const corsOptions: cors.CorsOptions = {
+  origin(origin, callback) {
+    if (!origin) return callback(null, true); // curl/Postman/health checks
+    try {
+      const url = new URL(origin);
+      const allowed =
+        STATIC_ALLOWED_ORIGINS.has(origin) ||
+        (VERCEL_PREVIEWS_ENABLED && VERCEL_REGEX.test(url.hostname));
+      return allowed ? callback(null, true) : callback(new Error(`Not allowed by CORS: ${origin}`));
+    } catch {
+      return callback(new Error(`Invalid Origin header: ${origin}`));
+    }
+  },
   credentials: true,
-}));
-app.options("*", cors());
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+// IMPORTANT: use the SAME options for preflight
+app.options("*", cors(corsOptions));
+
 app.use(express.json());
 
 // Health
@@ -38,10 +73,9 @@ app.post(
         return res.status(409).json({ error: "Email already in use" });
       }
 
-      // Inline the hash (prevents 'assigned but never used' warning)
       const created = await prisma.user.create({
         data: { name, email, password_hash: await bcrypt.hash(password, 10) },
-        select: { id: true, name: true, email: true }, // only safe fields
+        select: { id: true, name: true, email: true },
       });
 
       const token = signToken({ userId: created.id, email: created.email });
@@ -69,7 +103,6 @@ app.post(
         return res.status(400).json({ error: "Missing fields" });
       }
 
-      // Need hash to compare
       const userFull = await prisma.user.findUnique({ where: { email } });
       if (!userFull) return res.status(401).json({ error: "Invalid credentials" });
 
@@ -78,13 +111,8 @@ app.post(
 
       const token = signToken({ userId: userFull.id, email: userFull.email });
 
-      // Strip hash safely and type result as SafeUser
       const { password_hash: _ignored, ...rest } = userFull;
-      const user: SafeUser = {
-        id: rest.id,
-        name: rest.name,
-        email: rest.email,
-      };
+      const user: SafeUser = { id: rest.id, name: rest.name, email: rest.email };
 
       return res.json({ token, user });
     } catch (e) {
@@ -112,9 +140,9 @@ app.get("/api/auth/me", auth, async (req: Request, res: Response) => {
 // ───────────────────────────────────────────────────────────
 // PROJECTS (auth required)
 // ───────────────────────────────────────────────────────────
+type CreateProjectBody = { name?: string; description?: string; location?: string };
 
 // Create Project
-type CreateProjectBody = { name?: string; description?: string; location?: string };
 app.post(
   "/api/projects",
   auth,
@@ -135,8 +163,12 @@ app.post(
           location,
         },
         select: {
-          id: true, name: true, description: true, location: true,
-          created_at: true, updated_at: true,
+          id: true,
+          name: true,
+          description: true,
+          location: true,
+          created_at: true,
+          updated_at: true,
         },
       });
 
@@ -156,10 +188,14 @@ app.get("/api/projects", auth, async (req: Request, res: Response) => {
     const projects = await prisma.project.findMany({
       where: { user_id: req.user.userId },
       select: {
-        id: true, name: true, description: true, location: true,
-        created_at: true, updated_at: true,
+        id: true,
+        name: true,
+        description: true,
+        location: true,
+        created_at: true,
+        updated_at: true,
       },
-      orderBy: { created_at: "desc" }
+      orderBy: { created_at: "desc" },
     });
 
     return res.json({ projects });
