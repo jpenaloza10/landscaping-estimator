@@ -89,6 +89,31 @@ app.post(
   }
 );
 
+// --- LOGIN (shared handler) ---
+type LoginBody = { email?: string; password?: string };
+
+const loginHandler = async (req: Request<{}, {}, LoginBody>, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: "Missing fields" });
+
+    const userFull = await prisma.user.findUnique({ where: { email } });
+    if (!userFull) return res.status(401).json({ error: "Invalid credentials" });
+
+    const ok = await bcrypt.compare(password, userFull.password_hash);
+    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
+
+    const token = signToken({ userId: userFull.id, email: userFull.email });
+    const { password_hash: _ignored, ...rest } = userFull;
+    const user: SafeUser = { id: rest.id, name: rest.name, email: rest.email };
+
+    return res.json({ token, user });
+  } catch (e) {
+    console.error("Login error:", e);
+    return res.status(500).json({ error: "Login failed" });
+  }
+};
+
 // ───────────────────────────────────────────────────────────
 // LOGIN
 // ───────────────────────────────────────────────────────────

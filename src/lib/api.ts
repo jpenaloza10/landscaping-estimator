@@ -1,4 +1,17 @@
-const BASE_URL = import.meta.env.VITE_API_URL as string | undefined;
+const RAW_BASE = import.meta.env.VITE_API_URL as string | undefined;
+
+const BASE_URL = RAW_BASE?.replace(/\/+$/, "");
+
+export class ApiError extends Error {
+  status: number;
+  payload?: unknown;
+  constructor(message: string, status: number, payload?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.payload = payload;
+  }
+}
 
 export function getToken(): string | null {
   return localStorage.getItem("token");
@@ -14,42 +27,59 @@ export interface ApiOptions {
   method?: string;
   body?: unknown;
   headers?: Record<string, string>;
+  signal?: AbortSignal;
+}
+
+function normalizePath(path: string): string {
+  return path.startsWith("/") ? path : `/${path}`;
 }
 
 export async function api<T = unknown>(
   path: string,
-  { method = "GET", body, headers = {} }: ApiOptions = {}
+  { method = "GET", body, headers = {}, signal }: ApiOptions = {}
 ): Promise<T> {
   if (!BASE_URL) {
-    throw new Error("VITE_API_URL is not set. Add it to your .env and restart the dev server.");
+    throw new Error("VITE_API_URL is not set. Add it to your .env and redeploy.");
   }
 
   const token = getToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: {
-      ...(body != null ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    body: body != null ? JSON.stringify(body) : undefined,
-  });
+  const url = `${BASE_URL}${normalizePath(path)}`;
 
-  // Try to parse JSON error bodies
-  const contentType = res.headers.get("content-type") || "";
-  const parseJson = async () =>
-    contentType.includes("application/json") ? await res.json() : undefined;
+  const finalHeaders: HeadersInit = {
+    Accept: "application/json",
+    ...(body != null ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...headers,
+  };
 
-  if (!res.ok) {
-    const errBody = await parseJson();
-    const msg =
-      (errBody as any)?.error || (await res.text()).trim() || `HTTP ${res.status}`;
-    throw new Error(msg);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers: finalHeaders,
+      body: body != null ? JSON.stringify(body) : undefined,
+      mode: "cors",
+      credentials: "omit", 
+      signal,
+    });
+  } catch (err: any) {
+    // Network error, DNS, CORS block, etc.
+    throw new ApiError(err?.message || "Network error", 0);
   }
 
-  const data = await parseJson();
-  // when not JSON (rare), fall back to text
-  return (data ?? (await res.text())) as T;
+  const contentType = res.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const payload = isJson ? await res.json().catch(() => undefined) : await res.text().catch(() => "");
+
+  if (!res.ok) {
+    const msg =
+      (isJson && (payload as any)?.error) ||
+      (typeof payload === "string" && payload.trim()) ||
+      `HTTP ${res.status}`;
+    throw new ApiError(msg, res.status, payload);
+  }
+
+  return (isJson ? (payload as T) : (payload as unknown as T));
 }
 
 // -------- Auth --------
@@ -60,7 +90,7 @@ export async function loginRequest(
   email: string,
   password: string
 ): Promise<{ token: string; user: SafeUser }> {
-  return api<{ token: string; user: SafeUser }>("/api/auth/login", {
+  return api("/api/auth/login", {
     method: "POST",
     body: { email, password },
   });
@@ -71,7 +101,7 @@ export async function registerRequest(
   email: string,
   password: string
 ): Promise<{ token: string; user: SafeUser }> {
-  return api<{ token: string; user: SafeUser }>("/api/auth/signup", {
+  return api("/api/auth/signup", {
     method: "POST",
     body: { name, email, password },
   });
