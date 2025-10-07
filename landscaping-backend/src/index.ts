@@ -14,10 +14,9 @@ const STATIC_ALLOWED_ORIGINS = new Set<string>([
   "http://127.0.0.1:3000",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-  "https://landscaping-estimator-rust.vercel.app", // Vercel prod
+  "https://landscaping-estimator-rust.vercel.app",
 ]);
 
-// Optional: add comma-separated extra origins via env
 if (process.env.ALLOWED_ORIGINS) {
   for (const o of process.env.ALLOWED_ORIGINS.split(",").map(s => s.trim()).filter(Boolean)) {
     STATIC_ALLOWED_ORIGINS.add(o);
@@ -29,7 +28,7 @@ const VERCEL_REGEX = /\.vercel\.app$/;
 
 const corsOptions: cors.CorsOptions = {
   origin(origin, callback) {
-    if (!origin) return callback(null, true); // curl/Postman/health checks
+    if (!origin) return callback(null, true); 
     try {
       const url = new URL(origin);
       const allowed =
@@ -46,7 +45,6 @@ const corsOptions: cors.CorsOptions = {
 };
 
 app.use(cors(corsOptions));
-// IMPORTANT: use the SAME options for preflight
 app.options("*", cors(corsOptions));
 
 app.use(express.json());
@@ -54,48 +52,51 @@ app.use(express.json());
 // Health
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// ───────────────────────────────────────────────────────────
-// SIGN UP
-// ───────────────────────────────────────────────────────────
+/** ───────────────────────────────────────────────────────────
+ * SIGN UP
+ * ─────────────────────────────────────────────────────────── */
 type SignupBody = { name?: string; email?: string; password?: string };
-app.post(
-  "/api/auth/signup",
-  async (req: Request<{}, {}, SignupBody>, res: Response) => {
-    try {
-      const { name, email, password } = req.body;
 
-      if (!name || !email || !password) {
-        return res.status(400).json({ error: "Missing fields" });
-      }
+app.post("/api/auth/signup", async (req: Request<{}, {}, SignupBody>, res: Response) => {
+  try {
+    const { name, email, password } = req.body;
 
-      const existing = await prisma.user.findUnique({ where: { email } });
-      if (existing) {
-        return res.status(409).json({ error: "Email already in use" });
-      }
-
-      const created = await prisma.user.create({
-        data: { name, email, password_hash: await bcrypt.hash(password, 10) },
-        select: { id: true, name: true, email: true },
-      });
-
-      const token = signToken({ userId: created.id, email: created.email });
-      const user: SafeUser = created;
-
-      return res.status(201).json({ token, user });
-    } catch (e) {
-      console.error("Signup error:", e);
-      return res.status(500).json({ error: "Signup failed" });
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Missing fields" });
     }
-  }
-);
 
-// --- LOGIN (shared handler) ---
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return res.status(409).json({ error: "Email already in use" });
+    }
+
+    const created = await prisma.user.create({
+      data: { name, email, password_hash: await bcrypt.hash(password, 10) },
+      select: { id: true, name: true, email: true },
+    });
+
+    const token = signToken({ userId: created.id, email: created.email });
+    const user: SafeUser = created;
+
+    return res.status(201).json({ token, user });
+  } catch (e) {
+    console.error("Signup error:", e);
+    return res.status(500).json({ error: "Signup failed" });
+  }
+});
+
+/** ───────────────────────────────────────────────────────────
+ * LOGIN (shared handler + optional legacy alias)
+ * ─────────────────────────────────────────────────────────── */
 type LoginBody = { email?: string; password?: string };
 
 const loginHandler = async (req: Request<{}, {}, LoginBody>, res: Response) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: "Missing fields" });
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Missing fields" });
+    }
 
     const userFull = await prisma.user.findUnique({ where: { email } });
     if (!userFull) return res.status(401).json({ error: "Invalid credentials" });
@@ -104,6 +105,7 @@ const loginHandler = async (req: Request<{}, {}, LoginBody>, res: Response) => {
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
     const token = signToken({ userId: userFull.id, email: userFull.email });
+
     const { password_hash: _ignored, ...rest } = userFull;
     const user: SafeUser = { id: rest.id, name: rest.name, email: rest.email };
 
@@ -114,42 +116,12 @@ const loginHandler = async (req: Request<{}, {}, LoginBody>, res: Response) => {
   }
 };
 
-// ───────────────────────────────────────────────────────────
-// LOGIN
-// ───────────────────────────────────────────────────────────
-type LoginBody = { email?: string; password?: string };
-app.post(
-  "/api/auth/login",
-  async (req: Request<{}, {}, LoginBody>, res: Response) => {
-    try {
-      const { email, password } = req.body;
+app.post("/api/auth/login", loginHandler);
+app.post("/api/login", loginHandler);
 
-      if (!email || !password) {
-        return res.status(400).json({ error: "Missing fields" });
-      }
-
-      const userFull = await prisma.user.findUnique({ where: { email } });
-      if (!userFull) return res.status(401).json({ error: "Invalid credentials" });
-
-      const ok = await bcrypt.compare(password, userFull.password_hash);
-      if (!ok) return res.status(401).json({ error: "Invalid credentials" });
-
-      const token = signToken({ userId: userFull.id, email: userFull.email });
-
-      const { password_hash: _ignored, ...rest } = userFull;
-      const user: SafeUser = { id: rest.id, name: rest.name, email: rest.email };
-
-      return res.json({ token, user });
-    } catch (e) {
-      console.error("Login error:", e);
-      return res.status(500).json({ error: "Login failed" });
-    }
-  }
-);
-
-// ───────────────────────────────────────────────────────────
-// CURRENT USER
-// ───────────────────────────────────────────────────────────
+/** ───────────────────────────────────────────────────────────
+ * CURRENT USER
+ * ─────────────────────────────────────────────────────────── */
 app.get("/api/auth/me", auth, async (req: Request, res: Response) => {
   if (!req.user?.userId) return res.status(401).json({ error: "Unauthorized" });
 
@@ -162,48 +134,44 @@ app.get("/api/auth/me", auth, async (req: Request, res: Response) => {
   return res.json({ user });
 });
 
-// ───────────────────────────────────────────────────────────
-// PROJECTS (auth required)
-// ───────────────────────────────────────────────────────────
+/** ───────────────────────────────────────────────────────────
+ * PROJECTS (auth required)
+ * ─────────────────────────────────────────────────────────── */
 type CreateProjectBody = { name?: string; description?: string; location?: string };
 
 // Create Project
-app.post(
-  "/api/projects",
-  auth,
-  async (req: Request<{}, {}, CreateProjectBody>, res: Response) => {
-    try {
-      if (!req.user?.userId) return res.status(401).json({ error: "Unauthorized" });
-      const { name, description, location } = req.body ?? {};
+app.post("/api/projects", auth, async (req: Request<{}, {}, CreateProjectBody>, res: Response) => {
+  try {
+    if (!req.user?.userId) return res.status(401).json({ error: "Unauthorized" });
+    const { name, description, location } = req.body ?? {};
 
-      if (!name || !description || !location) {
-        return res.status(400).json({ error: "name, description, location are required" });
-      }
-
-      const project = await prisma.project.create({
-        data: {
-          user_id: req.user.userId,
-          name,
-          description,
-          location,
-        },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          location: true,
-          created_at: true,
-          updated_at: true,
-        },
-      });
-
-      return res.status(201).json({ project });
-    } catch (e) {
-      console.error("Create project error:", e);
-      return res.status(500).json({ error: "Failed to create project" });
+    if (!name || !description || !location) {
+      return res.status(400).json({ error: "name, description, location are required" });
     }
+
+    const project = await prisma.project.create({
+      data: {
+        user_id: req.user.userId,
+        name,
+        description,
+        location,
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        location: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+
+    return res.status(201).json({ project });
+  } catch (e) {
+    console.error("Create project error:", e);
+    return res.status(500).json({ error: "Failed to create project" });
   }
-);
+});
 
 // List Projects for current user
 app.get("/api/projects", auth, async (req: Request, res: Response) => {
