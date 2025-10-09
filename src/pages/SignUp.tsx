@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
-const API = "http://localhost:8080";
+const API = "https://landscaping-backend-sbhw.onrender.com";
 
 export default function SignUp() {
   const { setAuth } = useAuth();

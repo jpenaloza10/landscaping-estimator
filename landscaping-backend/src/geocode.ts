@@ -1,3 +1,4 @@
+// src/geocode.ts
 import fetch from "node-fetch";
 
 export type GeocodeResult = {
@@ -10,43 +11,53 @@ export type GeocodeResult = {
   longitude: number | null;
 };
 
-export async function geocode(query: string, timeoutMs = 4000): Promise<GeocodeResult | null> {
-  const ctrl = new AbortController();
-  const to = setTimeout(() => ctrl.abort(), timeoutMs);
+type NominatimItem = {
+  address?: {
+    house_number?: string;
+    road?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    hamlet?: string;
+    state?: string;
+    region?: string;
+    postcode?: string;
+    country?: string;
+  };
+  lat?: string;
+  lon?: string;
+  display_name?: string;
+};
 
-  try {
-    const url = new URL("https://nominatim.openstreetmap.org/search");
-    url.searchParams.set("q", query);
-    url.searchParams.set("format", "json");
-    url.searchParams.set("addressdetails", "1");
-    url.searchParams.set("limit", "1");
+export async function geocode(query: string): Promise<GeocodeResult | null> {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("format", "json");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("limit", "1");
 
-    const res = await fetch(url.toString(), {
-      signal: ctrl.signal,
-      headers: { "User-Agent": "landscaping-estimator/1.0 (+support@example.com)" }
-    });
+  const res = await fetch(url.toString(), {
+    headers: { "User-Agent": "landscaping-estimator/1.0 (+support@example.com)" }
+  });
+  if (!res.ok) return null;
 
-    if (!res.ok) return null;
-    const arr: any[] = await res.json();
-    if (!arr?.length) return null;
+  const raw = (await res.json()) as unknown;
+  if (!Array.isArray(raw) || raw.length === 0) return null;
 
-    const best = arr[0];
-    const a = best.address ?? {};
-    const city = a.city || a.town || a.village || a.hamlet || null;
+  const data = raw as NominatimItem[];
+  const best = data[0];
+  const a = best.address || {};
 
-    return {
-      address: [a.house_number, a.road].filter(Boolean).join(" ") || null,
-      city,
-      state: a.state || a.region || null,
-      postal_code: a.postcode || null,
-      country: a.country || null,
-      latitude: best.lat ? parseFloat(best.lat) : null,
-      longitude: best.lon ? parseFloat(best.lon) : null
-    };
-  } catch {
-    return null; 
-  } finally {
-    clearTimeout(to);
-  }
+  const addrLine = [a.house_number, a.road].filter(Boolean).join(" ");
+  const city = a.city || a.town || a.village || a.hamlet || null;
+
+  return {
+    address: addrLine || null,
+    city,
+    state: a.state || a.region || null,
+    postal_code: a.postcode || null,
+    country: a.country || null,
+    latitude: best.lat ? parseFloat(best.lat) : null,
+    longitude: best.lon ? parseFloat(best.lon) : null
+  };
 }
-

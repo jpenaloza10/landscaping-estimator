@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import LocationAutocomplete from "../components/LocationAutocomplete";
 
 
-const API = "http://localhost:8080";
+const API = "https://landscaping-backend-sbhw.onrender.com";
 
 const SCOPE_OPTIONS = [
   "Paver Patio",
