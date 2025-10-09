@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import LocationAutocomplete from "../components/LocationAutocomplete";
+
 
 const API = "http://localhost:8080";
 
@@ -101,8 +103,8 @@ export default function ProjectWizard() {
 
       {step === 3 && (
         <div className="bg-white shadow rounded-xl p-5">
-          <label className="block mb-2 text-sm">Location (City, State or ZIP)</label>
-          <input className="w-full border rounded p-2 mb-4" value={location} onChange={e=>setLocation(e.target.value)} required />
+          <label className="block mb-2 text-sm">Location</label>
+          <LocationAutocomplete value={location} onChange={setLocation} />
           {err && <div className="text-red-600 text-sm mb-3">{err}</div>}
           <div className="flex justify-between">
             <button className="px-4 py-2 rounded bg-gray-200" onClick={()=>setStep(2)}>Back</button>

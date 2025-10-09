@@ -18,14 +18,27 @@ model User {
 }
 
 model Project {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
   name        String
   description String
+  // New fields
+  address     String?
+  city        String?
+  state       String?
+  postal_code String?
+  country     String?
+  latitude    Float?
+  longitude   Float?
+  // keep the original simple location string for display/search if you like
   location    String
+
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
-  user_id     Int
-  id          Int      @id @default(autoincrement())
+
   user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([city, state, country])
+  @@index([latitude, longitude])
 }

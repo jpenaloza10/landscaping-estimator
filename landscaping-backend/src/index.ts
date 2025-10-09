@@ -5,6 +5,11 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { signToken, auth } from "./auth";
 import { SafeUser } from "./types/user";
+import { geocode } from "./geocode";
+import { auth as authMiddleware } from "./auth"; 
+import { createProjectSchema, CreateProjectBody } from "./validation/project";
+
+
 
 const app = express();
 
@@ -137,41 +142,67 @@ app.get("/api/auth/me", auth, async (req: Request, res: Response) => {
 /** ───────────────────────────────────────────────────────────
  * PROJECTS (auth required)
  * ─────────────────────────────────────────────────────────── */
-type CreateProjectBody = { name?: string; description?: string; location?: string };
 
-// Create Project
-app.post("/api/projects", auth, async (req: Request<{}, {}, CreateProjectBody>, res: Response) => {
-  try {
-    if (!req.user?.userId) return res.status(401).json({ error: "Unauthorized" });
-    const { name, description, location } = req.body ?? {};
+app.post(
+  "/api/projects",
+  authMiddleware,
+  async (req: Request<{}, {}, CreateProjectBody>, res: Response) => {
+    try {
+      if (!req.user?.userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
 
-    if (!name || !description || !location) {
-      return res.status(400).json({ error: "name, description, location are required" });
+      // Validate body (zod)
+      const parsed = createProjectSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid payload",
+          details: parsed.error.flatten()
+        });
+      }
+      const { name, description, location } = parsed.data;
+
+      // Geocode (graceful fallback)
+      const g = await geocode(location);
+
+      const project = await prisma.project.create({
+        data: {
+          user_id: req.user.userId,
+          name,
+          description,
+          location, // raw input
+          address: g?.address ?? null,
+          city: g?.city ?? null,
+          state: g?.state ?? null,
+          postal_code: g?.postal_code ?? null,
+          country: g?.country ?? null,
+          latitude: g?.latitude ?? null,
+          longitude: g?.longitude ?? null
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          location: true,
+          address: true,
+          city: true,
+          state: true,
+          postal_code: true,
+          country: true,
+          latitude: true,
+          longitude: true,
+          created_at: true,
+          updated_at: true
+        }
+      });
+
+      return res.status(201).json({ project });
+    } catch (e) {
+      console.error("Create project error:", e);
+      return res.status(500).json({ error: "Failed to create project" });
     }
-
-    const project = await prisma.project.create({
-      data: {
-        user_id: req.user.userId,
-        name,
-        description,
-        location,
-      },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        location: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
-
-    return res.status(201).json({ project });
-  } catch (e) {
-    console.error("Create project error:", e);
-    return res.status(500).json({ error: "Failed to create project" });
   }
-});
+);
 
 // List Projects for current user
 app.get("/api/projects", auth, async (req: Request, res: Response) => {
