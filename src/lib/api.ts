@@ -1,5 +1,5 @@
+// src/lib/api.ts
 const RAW_BASE = import.meta.env.VITE_API_URL as string | undefined;
-
 const BASE_URL = RAW_BASE?.replace(/\/+$/, "");
 
 export class ApiError extends Error {
@@ -59,11 +59,10 @@ export async function api<T = unknown>(
       headers: finalHeaders,
       body: body != null ? JSON.stringify(body) : undefined,
       mode: "cors",
-      credentials: "omit", 
+      credentials: "omit",
       signal,
     });
   } catch (err: any) {
-    // Network error, DNS, CORS block, etc.
     throw new ApiError(err?.message || "Network error", 0);
   }
 
@@ -82,9 +81,9 @@ export async function api<T = unknown>(
   return (isJson ? (payload as T) : (payload as unknown as T));
 }
 
-// -------- Auth --------
+/** ========= Auth ========= */
 
-export type SafeUser = { id: number; name: string; email: string };
+export type SafeUser = { id: string | number; name: string; email: string };
 
 export async function loginRequest(
   email: string,
@@ -107,13 +106,13 @@ export async function registerRequest(
   });
 }
 
-// -------- Projects --------
+/** ========= Projects ========= */
 
 export interface Project {
-  id: number;
+  id: string;
   name: string;
-  description: string;
-  location: string;
+  description?: string | null;
+  location?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -134,3 +133,6 @@ export async function createProject(input: {
   });
   return project;
 }
+
+/** Back-compat alias so imports using authedFetch keep working */
+export const authedFetch = api;

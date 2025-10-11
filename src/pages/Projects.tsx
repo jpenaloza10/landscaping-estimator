@@ -1,19 +1,12 @@
+// src/pages/Projects.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { authedFetch, ApiError } from "../lib/api";
-
-type Project = {
-  id: string;
-  name: string;
-  description?: string | null;
-  location?: string | null;
-  created_at: string;
-};
+import { authedFetch, ApiError, Project } from "../lib/api";
 
 type ProjectsResponse =
-  | { projects: Project[] }     // if your backend wraps payload
-  | Project[];                  // or returns a raw array
+  | { projects: Project[] }  // your backend returns this shape
+  | Project[];               // tolerate raw arrays too
 
 export default function Projects() {
   const navigate = useNavigate();
@@ -22,12 +15,8 @@ export default function Projects() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // Derived flags
-  const isAuthed = Boolean(token);
-
   useEffect(() => {
-    if (!isAuthed) {
-      // No token → send to login (adjust route as needed)
+    if (!token) {
       navigate("/login", { replace: true });
       return;
     }
@@ -39,16 +28,13 @@ export default function Projects() {
     (async () => {
       try {
         const data = await authedFetch<ProjectsResponse>("/api/projects", {
-          token,
           signal: ac.signal,
         });
-
         const list = Array.isArray(data) ? data : data.projects;
         setProjects(Array.isArray(list) ? list : []);
       } catch (e: any) {
-        if (e.name === "AbortError") return;
+        if (e?.name === "AbortError") return;
         if (e instanceof ApiError && e.status === 401) {
-          // Token expired → send to login
           navigate("/login", { replace: true });
           return;
         }
@@ -59,7 +45,7 @@ export default function Projects() {
     })();
 
     return () => ac.abort();
-  }, [token, isAuthed, navigate]);
+  }, [token, navigate]);
 
   const content = useMemo(() => {
     if (loading) {
@@ -81,23 +67,6 @@ export default function Projects() {
         <div className="bg-red-50 border border-red-200 text-red-700 rounded p-3">
           <div className="font-medium">Couldn’t load projects</div>
           <div className="text-sm">{err}</div>
-          <button
-            className="mt-3 inline-flex items-center rounded bg-red-600 text-white px-3 py-1.5 hover:bg-red-700"
-            onClick={() => {
-              // quick retry
-              setLoading(true);
-              setErr(null);
-              // trigger effect by re-setting token (or call a local fetch fn)
-              // simplest is: force a re-render reusing the effect:
-              // set a small timeout to avoid blocking click
-              setTimeout(() => {
-                // This is a noop; if you prefer, factor the fetch into a function and call it here.
-                setLoading(false);
-              }, 150);
-            }}
-          >
-            Try again
-          </button>
         </div>
       );
     }
@@ -132,7 +101,6 @@ export default function Projects() {
                   Created: {new Date(p.created_at).toLocaleString()}
                 </div>
               </div>
-              {/* Optional details route */}
               <Link
                 to={`/projects/${p.id}`}
                 className="shrink-0 text-green-700 hover:underline mt-1"

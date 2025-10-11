@@ -1,15 +1,56 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-type User = { id: number; name: string; email: string } | null;
-type Ctx = { user: User; token: string | null; setAuth: (t: string, u: User) => void; clearAuth: () => void; };
-const AuthContext = createContext<Ctx>({ user: null, token: null, setAuth: () => {}, clearAuth: () => {} });
+// src/auth/AuthContext.tsx
+import { createContext, useContext, useEffect, useState } from "react";
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User>(null);
-  const [token, setToken] = useState<string | null>(null);
-  useEffect(() => { const t = localStorage.getItem("token"); const u = localStorage.getItem("user");
-    if (t && u) { setToken(t); setUser(JSON.parse(u)); } }, []);
-  const setAuth = (t: string, u: User) => { setToken(t); setUser(u); localStorage.setItem("token", t); localStorage.setItem("user", JSON.stringify(u)); };
-  const clearAuth = () => { setToken(null); setUser(null); localStorage.removeItem("token"); localStorage.removeItem("user"); };
-  return <AuthContext.Provider value={{ user, token, setAuth, clearAuth }}>{children}</AuthContext.Provider>;
+export type User = { id: string | number; name: string; email: string };
+
+type Ctx = {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  setAuth: (next: { user: User | null; token: string | null }) => void;
+  logout: () => void;      // primary name
+  clearAuth: () => void;   // alias to match AppShell usage
 };
-export const useAuth = () => useContext(AuthContext);
+
+const AuthContext = createContext<Ctx | null>(null);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    // Hydrate from localStorage
+    try {
+      const t = localStorage.getItem("token");
+      const u = localStorage.getItem("user");
+      if (t) setToken(t);
+      if (u) setUser(JSON.parse(u));
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  const setAuth: Ctx["setAuth"] = ({ user, token }) => {
+    setUser(user);
+    setToken(token);
+    if (token) localStorage.setItem("token", token);
+    else localStorage.removeItem("token");
+    if (user) localStorage.setItem("user", JSON.stringify(user));
+    else localStorage.removeItem("user");
+  };
+
+  const logout = () => setAuth({ user: null, token: null });
+  const clearAuth = logout; // keep App.tsx unchanged
+
+  return (
+    <AuthContext.Provider value={{ user, token, loading, setAuth, logout, clearAuth }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+};
