@@ -38,15 +38,28 @@ export default function ProjectWizard() {
   }
 
   async function submit() {
-    setErr(null); setLoading(true);
+    setErr(null);
+    setLoading(true);
     try {
+      if (!token) {
+        setErr("You must be logged in before creating a project.");
+        return;
+      }
+  
+      console.debug("Submitting with token:", token.slice(0, 15) + "..."); // temporary debug
+  
       // Fold scope + notes into description for now
       const description = `Scope: ${scope.join(", ") || "None"}\nNotes: ${notes || "-"}`;
+  
       const res = await fetch(`${API}/api/projects`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name, description, location })
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // <-- key header
+        },
+        body: JSON.stringify({ name, description, location }),
       });
+  
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create project");
       nav("/projects");

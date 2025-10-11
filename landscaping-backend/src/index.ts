@@ -3,16 +3,18 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
-import { signToken, auth } from "./auth";
 import { SafeUser } from "./types/user";
 import { geocode } from "./geocode";
-import { auth as authMiddleware } from "./auth"; 
 import { createProjectSchema, CreateProjectBody } from "./validation/project";
+import { signToken, auth as authMiddleware } from "./auth";
 
 
+// NEW: Supabase admin client for Storage signing
+import { createClient } from "@supabase/supabase-js";
+// NEW: lightweight validation for the sign-upload route
+import { z } from "zod";
 
 const app = express();
-
 
 const STATIC_ALLOWED_ORIGINS = new Set<string>([
   "http://localhost:3000",
@@ -33,20 +35,25 @@ const VERCEL_REGEX = /\.vercel\.app$/;
 
 const corsOptions: cors.CorsOptions = {
   origin(origin, callback) {
-    if (!origin) return callback(null, true); 
+    // Allow server-to-server / curl where Origin may be missing
+    if (!origin) return callback(null, true);
+
     try {
       const url = new URL(origin);
       const allowed =
         STATIC_ALLOWED_ORIGINS.has(origin) ||
         (VERCEL_PREVIEWS_ENABLED && VERCEL_REGEX.test(url.hostname));
+
       return allowed ? callback(null, true) : callback(new Error(`Not allowed by CORS: ${origin}`));
     } catch {
       return callback(new Error(`Invalid Origin header: ${origin}`));
     }
   },
-  credentials: true,
+  // Frontend uses Bearer token header with credentials: "omit"
+  credentials: false,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  maxAge: 600, // cache preflight for 10 minutes
 };
 
 app.use(cors(corsOptions));
@@ -54,11 +61,25 @@ app.options("*", cors(corsOptions));
 
 app.use(express.json());
 
+app.get("/", (_req, res) => {
+  res.type("text/plain").send("Landscaping Estimator API: OK");
+});
+
 // Health
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
+app.get("/api/debug/headers", (req, res) => {
+  res.json({
+    method: req.method,
+    path: req.path,
+    origin: req.headers.origin || null,
+    authorization: req.headers.authorization || null,
+    host: req.headers.host || null,
+  });
+});
+
 /** ───────────────────────────────────────────────────────────
- * SIGN UP
+ * AUTH: SIGN UP
  * ─────────────────────────────────────────────────────────── */
 type SignupBody = { name?: string; email?: string; password?: string };
 
@@ -91,7 +112,7 @@ app.post("/api/auth/signup", async (req: Request<{}, {}, SignupBody>, res: Respo
 });
 
 /** ───────────────────────────────────────────────────────────
- * LOGIN (shared handler + optional legacy alias)
+ * AUTH: LOGIN (shared handler + optional legacy alias)
  * ─────────────────────────────────────────────────────────── */
 type LoginBody = { email?: string; password?: string };
 
@@ -226,6 +247,72 @@ app.get("/api/projects", auth, async (req: Request, res: Response) => {
   } catch (e) {
     console.error("List projects error:", e);
     return res.status(500).json({ error: "Failed to list projects" });
+  }
+});
+
+/** ───────────────────────────────────────────────────────────
+ * FILE UPLOAD: sign Supabase Storage upload URL (auth required)
+ * ─────────────────────────────────────────────────────────── */
+
+// Supabase admin client (server-side only)
+const SUPABASE_URL = process.env.SUPABASE_URL!;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || "project-uploads";
+
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+const signUploadSchema = z.object({
+  project_id: z.string().uuid(),
+  filename: z.string().min(1),
+  mime_type: z.string().optional()
+});
+
+/**
+ * Client POSTs { project_id, filename, mime_type }
+ * Response: { uploadUrl, path, mime_type }
+ * Client then PUTs file bytes to uploadUrl with header Content-Type: <mime_type>
+ */
+app.post("/api/uploads/sign", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const parsed = signUploadSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+    }
+    const { project_id, filename, mime_type } = parsed.data;
+
+    // (Optional) verify the project belongs to this user
+    const owns = await prisma.project.findFirst({
+      where: { id: project_id, user_id: req.user.userId },
+      select: { id: true }
+    });
+    if (!owns) return res.status(404).json({ error: "Project not found" });
+
+    // Storage path: <bucket>/<project_id>/<timestamp>-<filename>
+    const key = `${project_id}/${Date.now()}-${filename}`;
+
+    // Supabase Storage: create a short-lived signed upload URL
+    // NOTE: createSignedUploadUrl API availability depends on supabase-js version
+    // @ts-ignore - suppress type mismatch across client versions
+    const { data, error } = await supabaseAdmin
+      .storage
+      .from(SUPABASE_BUCKET)
+      .createSignedUploadUrl(key, 60); // expires in 60s
+
+    if (error) {
+      console.error("Supabase sign error:", error);
+      return res.status(500).json({ error: "Failed to sign upload URL" });
+    }
+
+    return res.json({
+      uploadUrl: data.signedUrl,
+      path: key,
+      mime_type: mime_type || "application/octet-stream"
+    });
+  } catch (e) {
+    console.error("Sign upload error:", e);
+    return res.status(500).json({ error: "Failed to sign upload URL" });
   }
 });
 
