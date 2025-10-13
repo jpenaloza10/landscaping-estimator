@@ -1,56 +1,57 @@
-// src/auth/AuthContext.tsx
+// auth/AuthContext.tsx
 import { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "../lib/supabase"; // your supabase client
 
-export type User = { id: string | number; name: string; email: string };
-
-type Ctx = {
-  user: User | null;
-  token: string | null;
+type AuthCtx = {
+  user: any | null;
   loading: boolean;
-  setAuth: (next: { user: User | null; token: string | null }) => void;
-  logout: () => void;      // primary name
-  clearAuth: () => void;   // alias to match AppShell usage
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
 };
 
-const AuthContext = createContext<Ctx | null>(null);
+const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Hydrate from localStorage
-    try {
-      const t = localStorage.getItem("token");
-      const u = localStorage.getItem("user");
-      if (t) setToken(t);
-      if (u) setUser(JSON.parse(u));
-    } catch {}
-    setLoading(false);
+    let mounted = true;
+
+    async function boot() {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      setUser(data.session?.user ?? null);
+      setLoading(false);
+    }
+    boot();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const setAuth: Ctx["setAuth"] = ({ user, token }) => {
-    setUser(user);
-    setToken(token);
-    if (token) localStorage.setItem("token", token);
-    else localStorage.removeItem("token");
-    if (user) localStorage.setItem("user", JSON.stringify(user));
-    else localStorage.removeItem("user");
-  };
+  async function signIn(email: string, password: string) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }
 
-  const logout = () => setAuth({ user: null, token: null });
-  const clearAuth = logout; // keep App.tsx unchanged
+  async function signOut() {
+    await supabase.auth.signOut();
+  }
 
-  return (
-    <AuthContext.Provider value={{ user, token, loading, setAuth, logout, clearAuth }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <Ctx.Provider value={{ user, loading, signIn, signOut }}>{children}</Ctx.Provider>;
 }
 
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
-};
+export function useAuth() {
+  const v = useContext(Ctx);
+  if (!v) throw new Error("useAuth must be used inside <AuthProvider>");
+  return v;
+}

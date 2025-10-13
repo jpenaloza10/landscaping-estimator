@@ -1,23 +1,29 @@
+// main.tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import "./index.css";
 
 // Pages
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-// If you created Projects page earlier, import it; otherwise remove this line/route.
 import Projects from "./pages/Projects";
 
 // Auth context + guard
-import { AuthProvider } from "./auth/AuthContext";
+import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { RequireAuth } from "./auth/RequireAuth";
+
+function PublicLogin() {
+  const { user, loading } = useAuth();
+  if (loading) return null; // or a spinner
+  return user ? <Navigate to="/dashboard" replace /> : <Login />;
+}
 
 const router = createBrowserRouter([
   // Public
-  { path: "/", element: <Login /> },
+  { path: "/", element: <PublicLogin /> },
 
-  // Protected routes
+  // Protected
   {
     path: "/dashboard",
     element: (
@@ -26,7 +32,6 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
   },
-  // Optional protected route if you added Projects page
   {
     path: "/projects",
     element: (
@@ -35,6 +40,9 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
   },
+
+  // Catch-all
+  { path: "*", element: <Navigate to="/" replace /> },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

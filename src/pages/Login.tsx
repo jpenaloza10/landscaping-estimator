@@ -1,86 +1,36 @@
+// pages/Login.tsx
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { loginRequest, ApiError } from "../lib/api";
 
 export default function Login() {
+  const { signIn } = useAuth();
   const navigate = useNavigate();
-  const { setAuth } = useAuth();
+  const location = useLocation() as any;
+  const from = location.state?.from?.pathname || "/dashboard";
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState("");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
-    setBusy(true);
+    setErr("");
     try {
-      const { token, user } = await loginRequest(email, password);
-      // ✅ set as a single object argument
-      setAuth({ user, token });
-      navigate("/projects", { replace: true });
+      await signIn(email, pw);
+      navigate(from, { replace: true });
     } catch (e: any) {
-      const msg =
-        e instanceof ApiError
-          ? e.message
-          : e?.message || "Login failed";
-      setErr(msg);
-    } finally {
-      setBusy(false);
+      setErr(e.message || "Login failed");
     }
   }
 
   return (
-    <div className="max-w-md mx-auto">
-      <h1 className="text-2xl font-bold text-green-700 mb-4">Login</h1>
-
-      {err && (
-        <div className="mb-3 rounded border border-red-200 bg-red-50 text-red-700 p-3">
-          {err}
-        </div>
-      )}
-
-      <form onSubmit={onSubmit} className="space-y-3">
-        <div>
-          <label className="block text-sm mb-1">Email</label>
-          <input
-            type="email"
-            className="w-full border rounded p-2"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1">Password</label>
-          <input
-            type="password"
-            className="w-full border rounded p-2"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
-        </div>
-
-        <button
-          disabled={busy}
-          className="w-full bg-green-600 text-white rounded py-2 hover:bg-green-700 disabled:opacity-50"
-        >
-          {busy ? "Signing in..." : "Sign In"}
-        </button>
-      </form>
-
-      <p className="text-sm text-slate-600 mt-3">
-        Don’t have an account?{" "}
-        <Link className="text-green-700 underline" to="/signup">
-          Sign up
-        </Link>
-      </p>
-    </div>
+    <form onSubmit={onSubmit} className="max-w-sm mx-auto p-6 bg-white rounded-2xl shadow mt-10">
+      <h1 className="text-lg font-semibold mb-4">Sign in</h1>
+      <input className="w-full border rounded p-2 mb-2" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
+      <input className="w-full border rounded p-2 mb-4" placeholder="Password" type="password" value={pw} onChange={e=>setPw(e.target.value)} />
+      <button className="w-full rounded bg-slate-900 text-white py-2">Continue</button>
+      {err && <p className="text-sm text-red-600 mt-2">{err}</p>}
+    </form>
   );
 }
