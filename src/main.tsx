@@ -1,4 +1,4 @@
-// main.tsx
+// src/main.tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import {
@@ -11,6 +11,7 @@ import "./index.css";
 
 // Pages
 import Login from "./pages/Login";
+import SignUp from "./pages/SignUp"; // ⬅️ NEW
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 
@@ -33,6 +34,17 @@ function PublicLogin() {
 }
 
 /**
+ * Public signup route:
+ * - shows SignUp when logged out
+ * - redirects to /dashboard when logged in
+ */
+function PublicSignUp() { // ⬅️ NEW
+  const { user, loading } = useAuth();
+  if (loading) return <div className="p-4 text-sm text-slate-500">Loading…</div>;
+  return user ? <Navigate to="/dashboard" replace /> : <SignUp />;
+}
+
+/**
  * Wrapper for all protected pages:
  * - requires auth
  * - wraps children in the shared responsive AppLayout
@@ -49,8 +61,9 @@ function ProtectedLayout() {
 }
 
 const router = createBrowserRouter([
-  // Public route
+  // Public routes
   { path: "/", element: <PublicLogin /> },
+  { path: "/signup", element: <PublicSignUp /> }, // ⬅️ NEW
 
   // Protected, shared layout
   {
