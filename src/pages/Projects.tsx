@@ -16,11 +16,8 @@ export default function Projects() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    // Wait for auth state to finish resolving
-    if (loading) return;
-
-    // If not authenticated, send to Login ("/")
-    if (!token) {
+    if (loading) return;          // wait for auth
+    if (!token) {                 // unauth → login
       navigate("/", { replace: true });
       return;
     }
@@ -52,33 +49,36 @@ export default function Projects() {
   }, [token, loading, navigate]);
 
   const content = useMemo(() => {
+    // loading skeleton (render as cards so it fits the layout grid)
     if (loading || loadingList) {
       return (
-        <ul className="grid gap-4">
+        <>
           {Array.from({ length: 3 }).map((_, i) => (
-            <li key={i} className="bg-white rounded-lg shadow p-4 animate-pulse">
+            <div key={i} className="bg-white rounded-2xl shadow-sm p-4 animate-pulse">
               <div className="h-4 w-48 bg-slate-200 rounded mb-2" />
               <div className="h-3 w-64 bg-slate-200 rounded mb-1" />
               <div className="h-3 w-40 bg-slate-200 rounded" />
-            </li>
+            </div>
           ))}
-        </ul>
+        </>
       );
     }
 
+    // error card (full width)
     if (err) {
       return (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded p-3">
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 sm:col-span-2 lg:col-span-3">
           <div className="font-medium">Couldn’t load projects</div>
           <div className="text-sm">{err}</div>
         </div>
       );
     }
 
+    // empty state (centered, full width)
     if (!projects.length) {
       return (
-        <div className="text-gray-600 bg-white rounded-lg shadow p-6">
-          <div className="font-medium">No projects yet</div>
+        <div className="text-slate-700 bg-white rounded-2xl shadow-sm p-6 sm:col-span-2 lg:col-span-3">
+          <div className="font-semibold">No projects yet</div>
           <p className="text-sm mt-1">Create your first project to get started.</p>
           <Link
             to="/projects/new"
@@ -90,20 +90,21 @@ export default function Projects() {
       );
     }
 
+    // project cards (each card fits into the layout grid cell)
     return (
-      <ul className="grid gap-4">
+      <>
         {projects.map((p) => (
-          <li key={p.id} className="bg-white rounded-lg shadow p-4">
+          <div key={p.id} className="bg-white rounded-2xl shadow-sm p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="font-semibold text-green-800">{p.name}</div>
-                {p.location && <div className="text-sm text-gray-600">{p.location}</div>}
+                {p.location && <div className="text-sm text-slate-600">{p.location}</div>}
                 {p.description && (
-                  <div className="text-sm text-gray-500 mt-1 line-clamp-2">
+                  <div className="text-sm text-slate-500 mt-1 line-clamp-2">
                     {p.description}
                   </div>
                 )}
-                <div className="text-xs text-gray-400 mt-2">
+                <div className="text-xs text-slate-400 mt-2">
                   Created: {new Date(p.created_at).toLocaleString()}
                 </div>
               </div>
@@ -114,15 +115,16 @@ export default function Projects() {
                 Open →
               </Link>
             </div>
-          </li>
+          </div>
         ))}
-      </ul>
+      </>
     );
   }, [loading, loadingList, err, projects]);
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-4">
+    <>
+      {/* full-width header card that spans the grid */}
+      <div className="bg-white rounded-2xl shadow-sm p-4 flex items-center justify-between sm:col-span-2 lg:col-span-3">
         <h1 className="text-2xl font-bold text-green-700">Your Projects</h1>
         <Link
           to="/projects/new"
@@ -131,7 +133,9 @@ export default function Projects() {
           New Project
         </Link>
       </div>
+
+      {/* the rest of the cards flow into the layout grid */}
       {content}
-    </div>
+    </>
   );
 }
