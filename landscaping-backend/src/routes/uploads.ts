@@ -10,13 +10,26 @@ const supabase = createClient(
 );
 
 router.post("/sign", async (req, res) => {
-  const { fileName, contentType } = req.body;
-  const { data, error } = await supabase.storage
-    .from("receipts")
-    .createSignedUploadUrl(fileName, { upsert: true, contentType });
+  try {
+    const { fileName } = req.body; // e.g., 'user/<uid>/<uuid>-receipt.jpg'
+    if (!fileName) return res.status(400).json({ error: "fileName required" });
 
-  if (error) return res.status(400).json({ error: error.message });
-  res.json(data);
+    const { data, error } = await supabase
+      .storage
+      .from("receipts")
+      .createSignedUploadUrl(fileName, { upsert: true }); // ✅ only upsert here
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    // data includes: signedUrl, path, token
+    return res.json({
+      path: data.path,
+      token: data.token,
+      signedUrl: data.signedUrl
+    });
+  } catch (e:any) {
+    return res.status(500).json({ error: e.message });
+  }
 });
 
 export default router;
