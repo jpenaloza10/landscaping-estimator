@@ -9,6 +9,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
+  // Prefer user.name from metadata, then full_name, then email, then a friendly fallback
+  const displayName =
+    (user?.user_metadata as Record<string, any>)?.name ??
+    (user?.user_metadata as Record<string, any>)?.full_name ??
+    user?.email ??
+    "there";
+
   useEffect(() => {
     (async () => {
       try {
@@ -28,7 +35,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-green-700">Dashboard</h1>
-          <p className="text-gray-600">Welcome, {user?.name}</p>
+          <p className="text-gray-600">Welcome, {displayName}</p>
         </div>
         <Link
           to="/projects/new"  

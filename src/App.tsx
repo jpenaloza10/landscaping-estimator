@@ -11,9 +11,14 @@ export default function App() {
     <BrowserRouter>
       <AppShell>
         <Routes>
+          {/* Landing: if logged in -> /projects, else show Login */}
           <Route path="/" element={<LandingOrRedirect />} />
+
+          {/* Public auth routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
+
+          {/* Protected routes */}
           <Route
             path="/projects"
             element={
@@ -30,6 +35,8 @@ export default function App() {
               </RequireAuth>
             }
           />
+
+          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppShell>
@@ -75,13 +82,17 @@ function AppShell({ children }: { children: ReactNode }) {
               <>
                 <NavLink
                   to="/login"
-                  className={({ isActive }) => isActive ? "text-green-800 font-medium" : "text-green-700 hover:text-green-800"}
+                  className={({ isActive }) =>
+                    isActive ? "text-green-800 font-medium" : "text-green-700 hover:text-green-800"
+                  }
                 >
                   Login
                 </NavLink>
                 <NavLink
                   to="/signup"
-                  className={({ isActive }) => isActive ? "text-green-800 font-medium" : "text-green-700 hover:text-green-800"}
+                  className={({ isActive }) =>
+                    isActive ? "text-green-800 font-medium" : "text-green-700 hover:text-green-800"
+                  }
                 >
                   Sign Up
                 </NavLink>
@@ -90,12 +101,17 @@ function AppShell({ children }: { children: ReactNode }) {
               <>
                 <NavLink
                   to="/projects"
-                  className={({ isActive }) => isActive ? "text-green-800 font-medium" : "text-green-700 hover:text-green-800"}
+                  className={({ isActive }) =>
+                    isActive ? "text-green-800 font-medium" : "text-green-700 hover:text-green-800"
+                  }
                 >
                   Projects
                 </NavLink>
                 <button
-                  onClick={handleNavClick(() => { clearAuth(); navigate("/login", { replace: true }); })}
+                  onClick={handleNavClick(async () => {
+                    await clearAuth();
+                    navigate("/login", { replace: true });
+                  })}
                   className="text-red-600 hover:text-red-700"
                   title="Logout"
                 >
@@ -121,20 +137,23 @@ function AppShell({ children }: { children: ReactNode }) {
         {/* Mobile Nav Drawer */}
         {menuOpen && (
           <div className="md:hidden border-t border-slate-200">
-            <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-2 text-sm" aria-label="Mobile">
+            <nav
+              className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-2 text-sm"
+              aria-label="Mobile"
+            >
               {!user ? (
                 <>
                   <NavLink
                     to="/login"
                     onClick={handleNavClick()}
-                    className={({ isActive }) => isActive ? "text-green-800 font-medium" : "text-green-700"}
+                    className={({ isActive }) => (isActive ? "text-green-800 font-medium" : "text-green-700")}
                   >
                     Login
                   </NavLink>
                   <NavLink
                     to="/signup"
                     onClick={handleNavClick()}
-                    className={({ isActive }) => isActive ? "text-green-800 font-medium" : "text-green-700"}
+                    className={({ isActive }) => (isActive ? "text-green-800 font-medium" : "text-green-700")}
                   >
                     Sign Up
                   </NavLink>
@@ -144,12 +163,15 @@ function AppShell({ children }: { children: ReactNode }) {
                   <NavLink
                     to="/projects"
                     onClick={handleNavClick()}
-                    className={({ isActive }) => isActive ? "text-green-800 font-medium" : "text-green-700"}
+                    className={({ isActive }) => (isActive ? "text-green-800 font-medium" : "text-green-700")}
                   >
                     Projects
                   </NavLink>
                   <button
-                    onClick={handleNavClick(() => { clearAuth(); navigate("/login", { replace: true }); })}
+                    onClick={handleNavClick(async () => {
+                      await clearAuth();
+                      navigate("/login", { replace: true });
+                    })}
                     className="text-red-600 text-left"
                     title="Logout"
                   >
@@ -165,9 +187,7 @@ function AppShell({ children }: { children: ReactNode }) {
       {/* CONTENT */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         <main id="main" className="grid gap-6 md:grid-cols-3">
-          <section className="md:col-span-2 bg-white rounded-2xl shadow p-4">
-            {children}
-          </section>
+          <section className="md:col-span-2 bg-white rounded-2xl shadow p-4">{children}</section>
           <aside className="bg-white rounded-2xl shadow p-4 hidden md:block">
             <h2 className="font-semibold mb-2">Project Summary</h2>
             <p className="text-sm text-slate-600">Quick stats, recent uploads, etc.</p>
@@ -185,13 +205,13 @@ function AppShell({ children }: { children: ReactNode }) {
 
 function LandingOrRedirect() {
   const { user, loading } = useAuth();
-  if (loading) return null; // or a small spinner
+  if (loading) return null; // or a spinner/skeleton
   return user ? <Navigate to="/projects" replace /> : <Login />;
 }
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { token, loading } = useAuth();
-  if (loading) return null; // or a skeleton while auth initializes
+  if (loading) return null; // show nothing (or a skeleton) while auth initializes
   if (!token) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }

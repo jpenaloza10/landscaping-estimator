@@ -5,24 +5,28 @@ import { useAuth } from "../auth/AuthContext";
 import { authedFetch, ApiError, Project } from "../lib/api";
 
 type ProjectsResponse =
-  | { projects: Project[] }  // your backend returns this shape
-  | Project[];               // tolerate raw arrays too
+  | { projects: Project[] } // your backend returns this shape
+  | Project[];              // tolerate raw arrays too
 
 export default function Projects() {
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, loading } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingList, setLoadingList] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
+    // Wait for auth state to finish resolving
+    if (loading) return;
+
+    // If not authenticated, send to Login ("/")
     if (!token) {
-      navigate("/login", { replace: true });
+      navigate("/", { replace: true });
       return;
     }
 
     const ac = new AbortController();
-    setLoading(true);
+    setLoadingList(true);
     setErr(null);
 
     (async () => {
@@ -35,20 +39,20 @@ export default function Projects() {
       } catch (e: any) {
         if (e?.name === "AbortError") return;
         if (e instanceof ApiError && e.status === 401) {
-          navigate("/login", { replace: true });
+          navigate("/", { replace: true });
           return;
         }
         setErr(e?.message ?? "Failed to fetch projects");
       } finally {
-        setLoading(false);
+        setLoadingList(false);
       }
     })();
 
     return () => ac.abort();
-  }, [token, navigate]);
+  }, [token, loading, navigate]);
 
   const content = useMemo(() => {
-    if (loading) {
+    if (loading || loadingList) {
       return (
         <ul className="grid gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -95,7 +99,9 @@ export default function Projects() {
                 <div className="font-semibold text-green-800">{p.name}</div>
                 {p.location && <div className="text-sm text-gray-600">{p.location}</div>}
                 {p.description && (
-                  <div className="text-sm text-gray-500 mt-1 line-clamp-2">{p.description}</div>
+                  <div className="text-sm text-gray-500 mt-1 line-clamp-2">
+                    {p.description}
+                  </div>
                 )}
                 <div className="text-xs text-gray-400 mt-2">
                   Created: {new Date(p.created_at).toLocaleString()}
@@ -112,7 +118,7 @@ export default function Projects() {
         ))}
       </ul>
     );
-  }, [loading, err, projects]);
+  }, [loading, loadingList, err, projects]);
 
   return (
     <div className="max-w-4xl mx-auto p-6">

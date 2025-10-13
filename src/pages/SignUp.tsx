@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { registerRequest, ApiError } from "../lib/api";
+import { supabase } from "../lib/supabase"; // optional: to save display name to user metadata
 
 export default function SignUp() {
   const navigate = useNavigate();
-  const { setAuth } = useAuth();
+  const { signUp } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -18,15 +18,21 @@ export default function SignUp() {
     setErr(null);
     setBusy(true);
     try {
-      const { token, user } = await registerRequest(name, email, password);
-      // ✅ set as a single object argument
-      setAuth({ user, token });
+      // Create the account via Supabase (through AuthContext)
+      await signUp(email, password);
+
+      // Optional: persist the display name to the user's profile/metadata
+      // (This will no-op if there is no active session yet due to email confirmation.)
+      try {
+        await supabase.auth.updateUser({ data: { name } });
+      } catch {
+        /* ignore non-fatal metadata errors */
+      }
+
+      // Navigate to your first protected page
       navigate("/projects", { replace: true });
     } catch (e: any) {
-      const msg =
-        e instanceof ApiError
-          ? e.message
-          : e?.message || "Sign up failed";
+      const msg = e?.message || "Sign up failed";
       setErr(msg);
     } finally {
       setBusy(false);
@@ -89,7 +95,7 @@ export default function SignUp() {
 
       <p className="text-sm text-slate-600 mt-3">
         Already have an account?{" "}
-        <Link className="text-green-700 underline" to="/login">
+        <Link className="text-green-700 underline" to="/">
           Log in
         </Link>
       </p>

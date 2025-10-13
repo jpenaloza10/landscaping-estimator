@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import LocationAutocomplete from "../components/LocationAutocomplete";
 
-
-const API = "https://landscaping-backend-sbhw.onrender.com";
+// Prefer env; fall back to your Render URL for local convenience
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ?? "https://landscaping-backend-sbhw.onrender.com";
 
 const SCOPE_OPTIONS = [
   "Paver Patio",
@@ -12,7 +13,7 @@ const SCOPE_OPTIONS = [
   "Irrigation",
   "Fence",
   "Plantings",
-  "Retaining Wall"
+  "Retaining Wall",
 ];
 
 export default function ProjectWizard() {
@@ -34,7 +35,9 @@ export default function ProjectWizard() {
   const [loading, setLoading] = useState(false);
 
   function toggleScope(item: string) {
-    setScope(prev => prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]);
+    setScope((prev) =>
+      prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
+    );
   }
 
   async function submit() {
@@ -45,84 +48,140 @@ export default function ProjectWizard() {
         setErr("You must be logged in before creating a project.");
         return;
       }
-  
-      console.debug("Submitting with token:", token.slice(0, 15) + "..."); // temporary debug
-  
+
       // Fold scope + notes into description for now
-      const description = `Scope: ${scope.join(", ") || "None"}\nNotes: ${notes || "-"}`;
-  
-      const res = await fetch(`${API}/api/projects`, {
+      const description = `Scope: ${scope.join(", ") || "None"}\nNotes: ${
+        notes || "-"
+      }`;
+
+      const res = await fetch(`${API_BASE}/api/projects`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // <-- key header
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ name, description, location }),
       });
-  
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create project");
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg =
+          (data && (data.error || data.message)) ||
+          `Failed to create project (HTTP ${res.status})`;
+        throw new Error(msg);
+      }
+
       nav("/projects");
     } catch (e: any) {
-      setErr(e.message);
+      setErr(e?.message ?? "Something went wrong while creating the project.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-green-700 mb-4">New Project</h1>
+    <div className="mx-auto max-w-2xl p-6">
+      <h1 className="mb-4 text-2xl font-bold text-green-700">New Project</h1>
 
       {/* Stepper */}
-      <div className="flex items-center gap-2 mb-6">
-        {[1,2,3].map(n => (
-          <div key={n} className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${step>=n ? "bg-green-600" : "bg-gray-300"}`}>{n}</div>
+      <div className="mb-6 flex items-center gap-2">
+        {[1, 2, 3].map((n) => (
+          <div
+            key={n}
+            className={`flex h-8 w-8 items-center justify-center rounded-full text-white ${
+              step >= n ? "bg-green-600" : "bg-gray-300"
+            }`}
+          >
+            {n}
+          </div>
         ))}
-        <div className="text-gray-600 ml-2">
-          {step===1?"Basics":step===2?"Scope":"Location"}
+        <div className="ml-2 text-gray-600">
+          {step === 1 ? "Basics" : step === 2 ? "Scope" : "Location"}
         </div>
       </div>
 
       {step === 1 && (
-        <div className="bg-white shadow rounded-xl p-5">
-          <label className="block mb-2 text-sm">Project Name</label>
-          <input className="w-full border rounded p-2 mb-4" value={name} onChange={e=>setName(e.target.value)} required />
-          <label className="block mb-2 text-sm">Notes (optional)</label>
-          <textarea className="w-full border rounded p-2 mb-4 min-h-[120px]" value={notes} onChange={e=>setNotes(e.target.value)} />
+        <div className="rounded-xl bg-white p-5 shadow">
+          <label className="mb-2 block text-sm">Project Name</label>
+          <input
+            className="mb-4 w-full rounded border p-2"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+          <label className="mb-2 block text-sm">Notes (optional)</label>
+          <textarea
+            className="mb-4 min-h-[120px] w-full rounded border p-2"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
           <div className="flex justify-end gap-2">
-            <button className="px-4 py-2 rounded bg-gray-200" onClick={()=>setStep(2)} disabled={!name}>Next</button>
+            <button
+              className="rounded bg-gray-200 px-4 py-2"
+              onClick={() => setStep(2)}
+              disabled={!name}
+            >
+              Next
+            </button>
           </div>
         </div>
       )}
 
       {step === 2 && (
-        <div className="bg-white shadow rounded-xl p-5">
+        <div className="rounded-xl bg-white p-5 shadow">
           <div className="mb-3 font-semibold">Select Scope Items</div>
           <div className="grid grid-cols-2 gap-2">
-            {SCOPE_OPTIONS.map(opt => (
-              <label key={opt} className={`border rounded p-2 cursor-pointer ${scope.includes(opt) ? "bg-green-50 border-green-400" : ""}`}>
-                <input type="checkbox" className="mr-2" checked={scope.includes(opt)} onChange={()=>toggleScope(opt)} />
+            {SCOPE_OPTIONS.map((opt) => (
+              <label
+                key={opt}
+                className={`cursor-pointer rounded border p-2 ${
+                  scope.includes(opt) ? "border-green-400 bg-green-50" : ""
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="mr-2"
+                  checked={scope.includes(opt)}
+                  onChange={() => toggleScope(opt)}
+                />
                 {opt}
               </label>
             ))}
           </div>
-          <div className="flex justify-between mt-4">
-            <button className="px-4 py-2 rounded bg-gray-200" onClick={()=>setStep(1)}>Back</button>
-            <button className="px-4 py-2 rounded bg-gray-200" onClick={()=>setStep(3)}>Next</button>
+          <div className="mt-4 flex justify-between">
+            <button
+              className="rounded bg-gray-200 px-4 py-2"
+              onClick={() => setStep(1)}
+            >
+              Back
+            </button>
+            <button
+              className="rounded bg-gray-200 px-4 py-2"
+              onClick={() => setStep(3)}
+            >
+              Next
+            </button>
           </div>
         </div>
       )}
 
       {step === 3 && (
-        <div className="bg-white shadow rounded-xl p-5">
-          <label className="block mb-2 text-sm">Location</label>
+        <div className="rounded-xl bg-white p-5 shadow">
+          <label className="mb-2 block text-sm">Location</label>
           <LocationAutocomplete value={location} onChange={setLocation} />
-          {err && <div className="text-red-600 text-sm mb-3">{err}</div>}
+          {err && <div className="mb-3 text-sm text-red-600">{err}</div>}
           <div className="flex justify-between">
-            <button className="px-4 py-2 rounded bg-gray-200" onClick={()=>setStep(2)}>Back</button>
-            <button disabled={loading || !location || !name} className="px-4 py-2 rounded bg-green-600 text-white"
-                    onClick={submit}>
+            <button
+              className="rounded bg-gray-200 px-4 py-2"
+              onClick={() => setStep(2)}
+            >
+              Back
+            </button>
+            <button
+              disabled={loading || !location || !name}
+              className="rounded bg-green-600 px-4 py-2 text-white disabled:opacity-60"
+              onClick={submit}
+            >
               {loading ? "Saving..." : "Create Project"}
             </button>
           </div>
