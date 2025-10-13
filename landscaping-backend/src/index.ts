@@ -16,6 +16,12 @@ import { z } from "zod";
 const app = express();
 
 /* ----------------------------- CORS SETUP ----------------------------- */
+/** CORS FIX:
+ * - Middleware loaded before everything else
+ * - Dynamic allow-list (exact prod + vercel previews)
+ * - Let cors reflect request headers (removed strict allowedHeaders)
+ * - Explicit app.options('*') + optionsSuccessStatus: 204
+ */
 
 const STATIC_ALLOWED_ORIGINS = new Set<string>([
   "http://localhost:3000",
@@ -26,28 +32,25 @@ const STATIC_ALLOWED_ORIGINS = new Set<string>([
 ]);
 
 if (process.env.ALLOWED_ORIGINS) {
-  for (const o of process
-    .env
-    .ALLOWED_ORIGINS.split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)) {
+  for (const o of process.env.ALLOWED_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)) {
     STATIC_ALLOWED_ORIGINS.add(o);
   }
 }
 
+// Allow *.vercel.app previews
 const VERCEL_PREVIEWS_ENABLED = true;
-const VERCEL_REGEX = /\.vercel\.app$/;
+const VERCEL_HOSTNAME_REGEX = /(^|\.)vercel\.app$/i;
 
 const corsOptions: cors.CorsOptions = {
   origin(origin, callback) {
-    // Allow server-to-server / curl where Origin may be missing
+    // Allow server-to-server / curl / health checks with no Origin
     if (!origin) return callback(null, true);
 
     try {
-      const url = new URL(origin);
+      const { hostname } = new URL(origin);
       const allowed =
         STATIC_ALLOWED_ORIGINS.has(origin) ||
-        (VERCEL_PREVIEWS_ENABLED && VERCEL_REGEX.test(url.hostname));
+        (VERCEL_PREVIEWS_ENABLED && VERCEL_HOSTNAME_REGEX.test(hostname));
 
       return allowed
         ? callback(null, true)
@@ -56,15 +59,21 @@ const corsOptions: cors.CorsOptions = {
       return callback(new Error(`Invalid Origin header: ${origin}`));
     }
   },
-  // We use Authorization: Bearer on the frontend; no cookies
+  // You’re using Authorization: Bearer (no cross-site cookies), so:
   credentials: false,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  // Let cors reflect requested headers to avoid case / variant mismatches
+  // allowedHeaders: undefined,
+  optionsSuccessStatus: 204,
   maxAge: 600, // cache preflight for 10 minutes
 };
 
+// Apply CORS before any other middleware/routes
 app.use(cors(corsOptions));
+// Explicit preflight for every route
 app.options("*", cors(corsOptions));
+
+// JSON parsing after CORS
 app.use(express.json());
 
 /* ----------------------------- ROOT & HEALTH ----------------------------- */
@@ -75,13 +84,16 @@ app.get("/", (_req, res) => {
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-app.get("/api/debug/headers", (req, res) => {
+// Handy for debugging CORS/headers in prod
+app.all("/api/debug/headers", (req, res) => {
   res.json({
     method: req.method,
     path: req.path,
     origin: req.headers.origin || null,
     authorization: req.headers.authorization || null,
     host: req.headers.host || null,
+    "access-control-request-method": req.headers["access-control-request-method"] || null,
+    "access-control-request-headers": req.headers["access-control-request-headers"] || null,
   });
 });
 
