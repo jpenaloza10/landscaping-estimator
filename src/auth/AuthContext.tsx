@@ -1,5 +1,5 @@
 // src/auth/AuthContext.tsx
-import { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Session, User } from "@supabase/supabase-js";
 
@@ -8,12 +8,17 @@ export type AuthCtx = {
   session: Session | null;
   token: string | null;
   loading: boolean;
-  // legacy helpers expected by your pages
+
+  // legacy helpers expected by your pages (kept for compatibility)
   setAuth: (session: Session | null) => void;
   clearAuth: () => Promise<void>;
-  // primary actions
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+
+  // primary actions (now return structured results)
+  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signUp: (
+    email: string,
+    password: string
+  ) => Promise<{ error?: string; needsConfirm?: boolean }>;
   signOut: () => Promise<void>;
 };
 
@@ -24,21 +29,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // computed
+  // compute token from session
   const token = session?.access_token ?? null;
 
   useEffect(() => {
     let mounted = true;
 
-    async function boot() {
-      const { data } = await supabase.auth.getSession();
+    (async () => {
+      // 1) fetch existing session on mount
+      const { data, error } = await supabase.auth.getSession();
       if (!mounted) return;
-      setSession(data.session ?? null);
-      setUser(data.session?.user ?? null);
+      if (error) {
+        console.warn("supabase.auth.getSession error:", error.message);
+      }
+      setSession(data?.session ?? null);
+      setUser(data?.session?.user ?? null);
       setLoading(false);
-    }
-    boot();
+    })();
 
+    // 2) subscribe to auth state changes
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession ?? null);
       setUser(newSession?.user ?? null);
@@ -50,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // legacy helpers (used in your code)
+  // legacy helpers (kept)
   function setAuth(next: Session | null) {
     setSession(next);
     setUser(next?.user ?? null);
@@ -62,18 +71,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }
 
-  // main actions
+  // main actions (return objects so UI can show messages gracefully)
   async function signIn(email: string, password: string) {
-    const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      return { error: error.message };
+    }
+    // success: session is present
     setAuth(data.session);
+    return {};
   }
 
   async function signUp(email: string, password: string) {
-    const { error, data } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
-    // Depending on Supabase email confirmation settings, session may be null here.
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      return { error: error.message };
+    }
+    // If confirm-email is enabled, Supabase returns a user but no session until they confirm.
+    const needsConfirm = !!data?.user && !data?.session;
     if (data.session) setAuth(data.session);
+    return { needsConfirm };
   }
 
   async function signOut() {
@@ -82,7 +99,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }
 
-  const value: AuthCtx = { user, session, token, loading, setAuth, clearAuth, signIn, signUp, signOut };
+  const value = useMemo<AuthCtx>(
+    () => ({
+      user,
+      session,
+      token,
+      loading,
+      setAuth,
+      clearAuth,
+      signIn,
+      signUp,
+      signOut,
+    }),
+    [user, session, token, loading]
+  );
+
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

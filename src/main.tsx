@@ -28,7 +28,7 @@ import AppLayout from "./layouts/AppLayout";
  */
 function PublicLogin() {
   const { user, loading } = useAuth();
-  if (loading) return null; // or a spinner component
+  if (loading) return <div className="p-4 text-sm text-slate-500">Loading…</div>;
   return user ? <Navigate to="/dashboard" replace /> : <Login />;
 }
 
