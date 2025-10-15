@@ -27,7 +27,7 @@ import AppLayout from "./layouts/AppLayout";
  * - shows Login when logged out
  * - redirects to /dashboard when logged in
  */
-function PublicLogin() {
+export function PublicLogin() {
   const { user, loading } = useAuth();
   if (loading) return <div className="p-4 text-sm text-slate-500">Loading…</div>;
   return user ? <Navigate to="/dashboard" replace /> : <Login />;
