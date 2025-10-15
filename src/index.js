@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { signToken, auth } from "./auth";
 const app = express();
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+app.use(cors({ origin: "http://localhost:8080", credentials: true }));
 app.use(express.json());
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.post("/api/auth/signup", async (req, res) => {
