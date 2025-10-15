@@ -1,8 +1,7 @@
-// src/layouts/AppLayout.tsx
-import { PropsWithChildren, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, Outlet } from "react-router-dom";
 
-export default function AppLayout({ children }: PropsWithChildren) {
+export default function AppLayout() {
   const [open, setOpen] = useState(false);
 
   return (
@@ -28,7 +27,6 @@ export default function AppLayout({ children }: PropsWithChildren) {
           </nav>
         </div>
 
-        {/* mobile drawer */}
         {open && (
           <div className="border-t bg-white lg:hidden">
             <div className="mx-auto max-w-7xl px-4 py-3">
@@ -43,10 +41,12 @@ export default function AppLayout({ children }: PropsWithChildren) {
         )}
       </header>
 
-      {/* page container */}
+      {/* Page container */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* example responsive grid wrapper you can reuse */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
+        {/* Default responsive grid wrapper that your pages can rely on */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Outlet />
+        </div>
       </main>
 
       <footer className="py-6 text-center text-xs text-slate-500">
