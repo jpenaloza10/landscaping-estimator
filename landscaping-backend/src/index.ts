@@ -338,5 +338,5 @@ app.post("/api/uploads/sign", authMiddleware, async (req: Request, res: Response
 
 /* --------------------------------- START -------------------------------- */
 
-const port = Number(process.env.PORT || 4000);
+const port = Number(process.env.PORT || 8080);
 app.listen(port, () => console.log(`API listening on http://localhost:${port}`));
