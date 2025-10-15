@@ -36,6 +36,9 @@ const router = createBrowserRouter([
   { path: "*", element: <Navigate to="/" replace /> },
 ]);
 
+console.log("BOOT: main.tsx loaded ✅", import.meta.env.MODE, import.meta.env.PROD);
+
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AuthProvider>
