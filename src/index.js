@@ -38,4 +38,4 @@ app.get("/api/auth/me", auth, async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true } });
     res.json({ user });
 });
-app.listen(Number(process.env.PORT || 4000), () => console.log(`API on http://localhost:${process.env.PORT || 4000}`));
+app.listen(Number(process.env.PORT || 8080), () => console.log(`API on http://localhost:${process.env.PORT || 8080}`));
