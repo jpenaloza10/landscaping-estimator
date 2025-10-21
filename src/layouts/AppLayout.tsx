@@ -1,8 +1,31 @@
+// src/layouts/AppLayout.tsx
 import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../auth/AuthContext";
 
 export default function AppLayout() {
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Friendly display name for header
+  const displayName =
+    (user?.user_metadata as Record<string, any>)?.name ??
+    (user?.user_metadata as Record<string, any>)?.full_name ??
+    user?.email ??
+    "Account";
+
+  async function handleSignOut() {
+    try {
+      setSigningOut(true);
+      await supabase.auth.signOut();
+      navigate("/", { replace: true });
+    } finally {
+      setSigningOut(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -19,14 +42,32 @@ export default function AppLayout() {
             </button>
             <span className="font-semibold">Landscaping Estimator</span>
           </div>
-          <nav className="hidden gap-6 text-sm lg:flex">
+
+          {/* Desktop nav */}
+          <nav className="hidden items-center gap-4 text-sm lg:flex">
             <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/dashboard">Dashboard</NavLink>
             <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/projects">Projects</NavLink>
             <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/expenses">Expenses</NavLink>
             <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/account">Account</NavLink>
+
+            {/* Divider */}
+            <span className="mx-2 h-5 w-px bg-slate-200" />
+
+            {/* Account + Sign Out */}
+            <span className="max-w-[200px] truncate text-slate-600" title={displayName}>
+              {displayName}
+            </span>
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="rounded-lg border px-3 py-2 text-red-600 hover:bg-gray-100 disabled:opacity-60"
+            >
+              {signingOut ? "Signing out…" : "Sign Out"}
+            </button>
           </nav>
         </div>
 
+        {/* Mobile drawer */}
         {open && (
           <div className="border-t bg-white lg:hidden">
             <div className="mx-auto max-w-7xl px-4 py-3">
@@ -35,6 +76,18 @@ export default function AppLayout() {
                 <NavLink to="/projects" onClick={() => setOpen(false)}>Projects</NavLink>
                 <NavLink to="/expenses" onClick={() => setOpen(false)}>Expenses</NavLink>
                 <NavLink to="/account" onClick={() => setOpen(false)}>Account</NavLink>
+
+                <div className="mt-2 border-t pt-2 text-sm text-slate-600">{displayName}</div>
+                <button
+                  onClick={async () => {
+                    setOpen(false);
+                    await handleSignOut();
+                  }}
+                  disabled={signingOut}
+                  className="rounded-lg border px-3 py-2 text-left text-sm text-red-600 hover:bg-gray-100 disabled:opacity-60"
+                >
+                  {signingOut ? "Signing out…" : "Sign Out"}
+                </button>
               </div>
             </div>
           </div>
