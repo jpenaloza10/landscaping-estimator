@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import SignUp from "./pages/SignUp";
+import Home from "./pages/Home";
 
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { RequireAuth } from "./auth/RequireAuth";
@@ -16,12 +17,13 @@ import AppLayout from "./layouts/AppLayout";
 export function PublicLogin() {
   const { user, loading } = useAuth();
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
-  return user ? <Navigate to="/dashboard" replace /> : <Login />;
+  return user ? <Navigate to="/dashboard" replace /> : <Home />;
 }
 
 const router = createBrowserRouter([
   { path: "/", element: <PublicLogin /> },
   { path: "/signup", element: <SignUp />},
+  { path: "/login", element: <Login />},
   {
     element: (
       <RequireAuth>
