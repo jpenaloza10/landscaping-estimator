@@ -6,6 +6,7 @@ import "./index.css";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
+import SignUp from "./pages/SignUp";
 
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { RequireAuth } from "./auth/RequireAuth";
@@ -20,6 +21,7 @@ export function PublicLogin() {
 
 const router = createBrowserRouter([
   { path: "/", element: <PublicLogin /> },
+  { path: "/signup", element: <SignUp />},
   {
     element: (
       <RequireAuth>
@@ -35,8 +37,6 @@ const router = createBrowserRouter([
   },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);
-
-console.log("BOOT: main.tsx loaded ✅", import.meta.env.MODE, import.meta.env.PROD);
 
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
