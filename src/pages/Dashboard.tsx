@@ -44,7 +44,7 @@ export default function Dashboard() {
         </div>
         <div className="mt-3 sm:mt-0">
           <Link
-            to="/projects/new"
+            to="/projectwizard"
             className="inline-flex items-center rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
           >
             + New Project
@@ -60,7 +60,7 @@ export default function Dashboard() {
       <h2 className="mb-3 text-base font-semibold">Quick Actions</h2>
       <div className="flex flex-col gap-2">
         <Link
-          to="/projects/new"
+          to="/projectwizard"
           className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
         >
           Create Project

@@ -1,7 +1,7 @@
 // src/middleware/auth.ts
 import jwt from "jsonwebtoken";
 import type { Request, Response, NextFunction } from "express";
-import { supabaseAdmin } from "../lib/supabase";
+import { supabaseAdmin } from "./lib/supabase";
 
 /**
  * Augment Express Request with `user` (no TS namespace usage).

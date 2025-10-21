@@ -8,11 +8,13 @@ import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import SignUp from "./pages/SignUp";
 import Home from "./pages/Home";
+import Account from "./pages/Account";
 
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { RequireAuth } from "./auth/RequireAuth";
 
 import AppLayout from "./layouts/AppLayout";
+import ProjectWizard from "./pages/ProjectWizard";
 
 export function PublicLogin() {
   const { user, loading } = useAuth();
@@ -33,8 +35,8 @@ const router = createBrowserRouter([
     children: [
       { path: "/dashboard", element: <Dashboard /> },
       { path: "/projects", element: <Projects /> },
-      // { path: "/expenses", element: <Expenses /> },
-      // { path: "/account", element: <Account /> },
+      { path: "/projectwizard", element: <ProjectWizard /> },
+      { path: "/account", element: <Account /> },
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },
