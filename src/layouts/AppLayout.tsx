@@ -49,6 +49,8 @@ export default function AppLayout() {
             <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/projects">Projects</NavLink>
             <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/expenses">Expenses</NavLink>
             <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/account">Account</NavLink>
+            <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/assemblies">Assemblies</NavLink>
+            <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/estimate">Estimator</NavLink>
 
             {/* Divider */}
             <span className="mx-2 h-5 w-px bg-slate-200" />
@@ -76,6 +78,8 @@ export default function AppLayout() {
                 <NavLink to="/projects" onClick={() => setOpen(false)}>Projects</NavLink>
                 <NavLink to="/expenses" onClick={() => setOpen(false)}>Expenses</NavLink>
                 <NavLink to="/account" onClick={() => setOpen(false)}>Account</NavLink>
+                <NavLink to="/assemblies" onClick={() => setOpen(false)}>Assemblies</NavLink>
+                <NavLink to="/estimate" onClick={() => setOpen(false)}>Estimator</NavLink>
 
                 <div className="mt-2 border-t pt-2 text-sm text-slate-600">{displayName}</div>
                 <button
