@@ -41,7 +41,12 @@ export async function getTaxRateByZip(zip: string, state?: string): Promise<numb
   const url = `https://taxrates.api.avalara.com:443/postal?country=usa&postal=${encodeURIComponent(zip)}`;
 
   try {
-    const res = await fetch(url, { timeout: 5000 as any });
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+
+
     if (!res.ok) throw new Error(`Avalara postal API error: ${res.status}`);
     const data = (await res.json()) as TaxApiResponse;
     const rate = typeof data.totalRate === "number" ? data.totalRate : 0;

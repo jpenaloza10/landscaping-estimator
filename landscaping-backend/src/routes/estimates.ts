@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../prisma";
 import { evalFormula, applyWaste } from "../services/calc";
 import { computeTax } from "../services/tax";
+import type { AssemblyItem } from "@prisma/client";
 
 const r = Router();
 
@@ -20,14 +21,24 @@ r.post("/", async (req, res) => {
     if (!assembly) continue;
 
     const inputs = line.inputs || {};
-    const items = assembly.items.map(it => {
+    type ResolvedItem = {
+      name: string;
+      unit: string;
+      unitCost: number;
+      qty: number;
+      extended: number;
+    };
+    
+    const items: ResolvedItem[] = assembly.items.map((it: AssemblyItem): ResolvedItem => {
       const rawQty = evalFormula(it.qtyFormula, inputs);
       const qty = applyWaste(rawQty, assembly.wastePct);
-      const extended = qty * Number(it.unitCost);
-      return { name: it.name, unit: it.unit, unitCost: Number(it.unitCost), qty, extended };
+      const unitCost = Number(it.unitCost);
+      const extended = qty * unitCost;
+      return { name: it.name, unit: it.unit, unitCost, qty, extended };
     });
-
-    const lineTotal = items.reduce((a, b) => a + b.extended, 0);
+    
+    const lineTotal = items.reduce((acc: number, curr: ResolvedItem) => acc + curr.extended, 0);
+    
     subtotal += lineTotal;
 
     calcLines.push({
