@@ -1,11 +1,16 @@
 // src/lib/api.ts
 import { supabase } from "./supabase";
 
-// ===== Base URL =====
+/* =========================
+   Base URL
+   ========================= */
 const RAW_BASE = import.meta.env.VITE_API_URL as string | undefined;
-const BASE_URL = RAW_BASE?.replace(/\/+$/, "");
+// strip trailing slashes
+const BASE_URL = RAW_BASE ? RAW_BASE.replace(/\/+$/, "") : undefined;
 
-// ===== Error + Options =====
+/* =========================
+   Errors + Options
+   ========================= */
 export class ApiError extends Error {
   status: number;
   payload?: unknown;
@@ -24,18 +29,23 @@ export interface ApiOptions {
   signal?: AbortSignal;
 }
 
+/** Ensure all paths start with a leading slash */
 function normalizePath(path: string): string {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
-// ===== Auth header (Supabase) =====
+/* =========================
+   Auth header (Supabase)
+   ========================= */
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
   const token = data?.session?.access_token;
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// ===== Core fetch =====
+/* =========================
+   Core fetch (JSON by default)
+   ========================= */
 export async function api<T = unknown>(
   path: string,
   { method = "GET", body, headers = {}, signal }: ApiOptions = {}
@@ -85,9 +95,44 @@ export async function api<T = unknown>(
 }
 
 /* =========================
+   Optional: raw fetch helper (non-JSON)
+   ========================= */
+async function apiRaw(
+  path: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  if (!BASE_URL) {
+    throw new Error("VITE_API_URL is not set. Add it to your .env and redeploy.");
+  }
+  const url = `${BASE_URL}${normalizePath(path)}`;
+  const authHeaders = await getAuthHeaders();
+
+  const res = await fetch(url, {
+    mode: "cors",
+    credentials: "omit",
+    ...init,
+    headers: {
+      ...(init.headers || {}),
+      ...authHeaders,
+    },
+  });
+
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`;
+    try {
+      const maybeJson = await res.clone().json();
+      if (maybeJson?.error) message = maybeJson.error;
+    } catch {
+      // ignore json parse error; keep default message
+    }
+    throw new ApiError(message, res.status);
+  }
+  return res;
+}
+
+/* =========================
    Auth (optional backend JWT)
    ========================= */
-
 export type SafeUser = { id: string | number; name: string; email: string };
 
 export async function loginRequest(
@@ -111,10 +156,9 @@ export async function registerRequest(
   });
 }
 
-/* ==============
+/* =========================
    Projects
-   ============== */
-
+   ========================= */
 export interface Project {
   id: string;
   name: string;
@@ -141,9 +185,9 @@ export async function createProject(input: {
   return project;
 }
 
-/* ============================
+/* =========================
    Sprint 2: Estimation Core
-   ============================ */
+   ========================= */
 
 /** ---- Types (align with backend Prisma/API) ---- */
 export interface AssemblyItem {
@@ -222,15 +266,8 @@ export async function listTemplates(): Promise<Template[]> {
   return api<Template[]>("/api/assemblies/templates");
 }
 
-/** ---- Create Estimate (server computes takeoff, tax) ----
- * payload example:
- * {
- *   projectId: "proj-123",
- *   location: { state: "CA", zip: "94103" },
- *   lines: [
- *     { assemblyId: "abc123", inputs: { area: 300 } }
- *   ]
- * }
+/** ---- Estimates ----
+ * createEstimate: server computes takeoff, tax, totals
  */
 export async function createEstimate(payload: {
   projectId: string;
@@ -243,13 +280,36 @@ export async function createEstimate(payload: {
   });
 }
 
-/** ---- Proposal PDF URL ----
- * Open in new tab or use as <a href={getProposalPdfUrl(id)} ... />
+/** Get a single estimate by id */
+export async function getEstimate(estimateId: string): Promise<Estimate> {
+  return api<Estimate>(`/api/estimates/${encodeURIComponent(estimateId)}`);
+}
+
+/** List all estimates for a project (if your API supports it) */
+export async function listEstimates(projectId: string): Promise<Estimate[]> {
+  return api<Estimate[]>(`/api/projects/${encodeURIComponent(projectId)}/estimates`);
+}
+
+/** ---- Proposal PDF helpers ----
+ * Link usage:
+ *   <a href={getProposalPdfUrl(id)} target="_blank" rel="noreferrer">Open PDF</a>
+ * Programmatic download:
+ *   const blob = await downloadProposalPdf(id); // then createObjectURL(blob)
  */
 export function getProposalPdfUrl(estimateId: string): string {
   if (!BASE_URL) throw new Error("VITE_API_URL is not set.");
-  return `${BASE_URL}/api/proposals/${estimateId}.pdf`;
+  return `${BASE_URL}/api/proposals/${encodeURIComponent(estimateId)}.pdf`;
 }
 
-// Convenience alias if you were importing this elsewhere
+export async function downloadProposalPdf(estimateId: string): Promise<Blob> {
+  const res = await apiRaw(`/api/proposals/${encodeURIComponent(estimateId)}.pdf`, {
+    method: "GET",
+    // headers added by apiRaw (auth), content-type handled by server
+  });
+  return res.blob();
+}
+
+/* =========================
+   Convenience alias
+   ========================= */
 export const authedFetch = api;
