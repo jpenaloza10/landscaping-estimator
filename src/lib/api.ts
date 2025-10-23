@@ -1,10 +1,11 @@
 // src/lib/api.ts
-import { supabase } from "./supabase"; 
+import { supabase } from "./supabase";
 
+// ===== Base URL =====
 const RAW_BASE = import.meta.env.VITE_API_URL as string | undefined;
 const BASE_URL = RAW_BASE?.replace(/\/+$/, "");
 
-
+// ===== Error + Options =====
 export class ApiError extends Error {
   status: number;
   payload?: unknown;
@@ -27,15 +28,14 @@ function normalizePath(path: string): string {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
-// ⬇️ New helper: grab current Supabase access token
+// ===== Auth header (Supabase) =====
 async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data, error } = await supabase.auth.getSession();
+  const { data } = await supabase.auth.getSession();
   const token = data?.session?.access_token;
-  // (Optional) log once for debugging
-  // console.log("api -> using supabase token?", Boolean(token), error);
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+// ===== Core fetch =====
 export async function api<T = unknown>(
   path: string,
   { method = "GET", body, headers = {}, signal }: ApiOptions = {}
@@ -43,10 +43,7 @@ export async function api<T = unknown>(
   if (!BASE_URL) {
     throw new Error("VITE_API_URL is not set. Add it to your .env and redeploy.");
   }
-
   const url = `${BASE_URL}${normalizePath(path)}`;
-
-  // ⬇️ Merge Supabase token
   const authHeaders = await getAuthHeaders();
 
   const finalHeaders: HeadersInit = {
@@ -72,7 +69,9 @@ export async function api<T = unknown>(
 
   const contentType = res.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");
-  const payload = isJson ? await res.json().catch(() => undefined) : await res.text().catch(() => "");
+  const payload = isJson
+    ? await res.json().catch(() => undefined)
+    : await res.text().catch(() => "");
 
   if (!res.ok) {
     const msg =
@@ -85,15 +84,12 @@ export async function api<T = unknown>(
   return (isJson ? (payload as T) : (payload as unknown as T));
 }
 
-/** ========= Auth (backend endpoints) =========
- * If your backend still exposes /api/auth/login or /api/auth/signup and mints its
- * own JWT, you can keep these. But with Supabase Auth, you typically call supabase.auth
- * on the frontend instead, and your backend just verifies the Supabase JWT.
- */
+/* =========================
+   Auth (optional backend JWT)
+   ========================= */
 
 export type SafeUser = { id: string | number; name: string; email: string };
 
-// If you keep these routes, that's fine—just know your app now also sends Supabase JWTs.
 export async function loginRequest(
   email: string,
   password: string
@@ -115,7 +111,9 @@ export async function registerRequest(
   });
 }
 
-/** ========= Projects ========= */
+/* ==============
+   Projects
+   ============== */
 
 export interface Project {
   id: string;
@@ -143,4 +141,115 @@ export async function createProject(input: {
   return project;
 }
 
+/* ============================
+   Sprint 2: Estimation Core
+   ============================ */
+
+/** ---- Types (align with backend Prisma/API) ---- */
+export interface AssemblyItem {
+  id: string;
+  assemblyId: string;
+  name: string;
+  unit: string;             // e.g., "pallet", "ton", "hr"
+  unitCost: number;         // numeric
+  qtyFormula: string;       // e.g., "area/100"
+}
+
+export interface Assembly {
+  id: string;
+  slug: string;
+  name: string;
+  trade: string;            // e.g., "Hardscape"
+  unit: string;             // e.g., "sqft"
+  wastePct: number;         // 0.07 for 7%
+  items: AssemblyItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TemplateLine {
+  id: string;
+  templateId: string;
+  assemblyId: string;
+  defaults?: Record<string, unknown> | null;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description?: string | null;
+  lines: TemplateLine[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EstimateItem {
+  name: string;
+  unit: string;
+  unitCost: number;
+  qty: number;
+  extended: number;
+}
+
+export interface EstimateLine {
+  id: string;
+  estimateId: string;
+  assemblyId: string;
+  inputs: Record<string, number>;
+  items: EstimateItem[];
+  lineTotal: number;
+  notes?: string | null;
+}
+
+export interface Estimate {
+  id: string;
+  projectId: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  location?: Record<string, unknown> | null; // { zip, state, ... }
+  lines: EstimateLine[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** ---- Assemblies / Templates ---- */
+export async function listAssemblies(): Promise<Assembly[]> {
+  return api<Assembly[]>("/api/assemblies");
+}
+
+export async function listTemplates(): Promise<Template[]> {
+  return api<Template[]>("/api/assemblies/templates");
+}
+
+/** ---- Create Estimate (server computes takeoff, tax) ----
+ * payload example:
+ * {
+ *   projectId: "proj-123",
+ *   location: { state: "CA", zip: "94103" },
+ *   lines: [
+ *     { assemblyId: "abc123", inputs: { area: 300 } }
+ *   ]
+ * }
+ */
+export async function createEstimate(payload: {
+  projectId: string;
+  location?: Record<string, unknown>;
+  lines: Array<{ assemblyId: string; inputs: Record<string, number> }>;
+}): Promise<Estimate> {
+  return api<Estimate>("/api/estimates", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+/** ---- Proposal PDF URL ----
+ * Open in new tab or use as <a href={getProposalPdfUrl(id)} ... />
+ */
+export function getProposalPdfUrl(estimateId: string): string {
+  if (!BASE_URL) throw new Error("VITE_API_URL is not set.");
+  return `${BASE_URL}/api/proposals/${estimateId}.pdf`;
+}
+
+// Convenience alias if you were importing this elsewhere
 export const authedFetch = api;

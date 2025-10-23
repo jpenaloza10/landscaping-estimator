@@ -21,7 +21,7 @@ model Project {
   id          Int      @id @default(autoincrement())
   user_id     Int
   name        String
-  description String
+  description String?
   // New fields
   address     String?
   city        String?
@@ -31,7 +31,7 @@ model Project {
   latitude    Float?
   longitude   Float?
   // keep the original simple location string for display/search if you like
-  location    String
+  location    String? 
 
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
@@ -41,4 +41,71 @@ model Project {
   @@index([user_id])
   @@index([city, state, country])
   @@index([latitude, longitude])
+}
+
+model Assembly {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  name        String
+  trade       String        // e.g., "Hardscape", "Irrigation"
+  unit        String        // e.g., "sqft", "lf"
+  wastePct    Float         @default(0.05) // 5% default waste
+  items       AssemblyItem[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model AssemblyItem {
+  id           String   @id @default(cuid())
+  assemblyId   String
+  assembly     Assembly  @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  name         String
+  unit         String    // e.g., "pallet", "ton", "bag", "hr"
+  unitCost     Decimal   @db.Numeric(10,2)
+  qtyFormula   String    // store a simple expression like "area/100" or "perimeter/10"
+}
+
+model Template { // reusable set of assemblies w/ default params
+  id          String              @id @default(cuid())
+  name        String              @unique
+  description String?
+  lines       TemplateLine[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model TemplateLine {
+  id          String   @id @default(cuid())
+  templateId  String
+  template    Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  assemblyId  String
+  assembly    Assembly  @relation(fields: [assemblyId], references: [id], onDelete: Restrict)
+  // optional defaults (e.g., base area, depth)
+  defaults    Json?
+}
+
+model Estimate {
+  id         String          @id @default(cuid())
+  projectId  String
+  // link to your Project model if you have one:
+  project    Project?        @relation(fields: [projectId], references: [id])
+  subtotal   Decimal         @db.Numeric(12,2) @default(0)
+  tax        Decimal         @db.Numeric(12,2) @default(0)
+  total      Decimal         @db.Numeric(12,2) @default(0)
+  lines      EstimateLine[]
+  location   Json?           // { zip, city, state, country }
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+}
+
+model EstimateLine {
+  id          String   @id @default(cuid())
+  estimateId  String
+  estimate    Estimate  @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  assemblyId  String
+  assembly    Assembly  @relation(fields: [assemblyId], references: [id], onDelete: Restrict)
+  inputs      Json      // e.g., { area: 320, perimeter: 80, depthIn: 2 }
+  items       Json      // resolved items w/ qty & cost at calc-time
+  lineTotal   Decimal   @db.Numeric(12,2)
+  notes       String?
 }

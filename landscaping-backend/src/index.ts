@@ -2,6 +2,8 @@ import "dotenv/config";
 import express, { Request, Response } from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
+import projects from "./routes/projects";
+import assembliesRouter from "./routes/assemblies";
 import { prisma } from "./prisma";
 import { SafeUser } from "./types/user";
 import { geocode } from "./geocode";
@@ -65,6 +67,7 @@ const corsOptions: cors.CorsOptions = {
   // Let cors reflect requested headers to avoid case / variant mismatches
   // allowedHeaders: undefined,
   optionsSuccessStatus: 204,
+  allowedHeaders: ["Content-Type", "Authorization"], // ⬅️ important for JWT header
   maxAge: 600, // cache preflight for 10 minutes
 };
 
@@ -81,6 +84,10 @@ app.use(express.json());
 app.get("/", (_req, res) => {
   res.type("text/plain").send("Landscaping Estimator API: OK");
 });
+
+app.use("/api/projects", projects);
+
+app.use("/api/assemblies", assembliesRouter);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
