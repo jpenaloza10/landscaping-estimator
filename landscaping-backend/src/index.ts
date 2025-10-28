@@ -89,6 +89,10 @@ app.use("/api/projects", projects);
 
 app.use("/api/assemblies", assembliesRouter);
 
+app.get("/api/assemblies/ping", (_req, res) => {
+  res.json({ ok: true, when: new Date().toISOString() });
+});
+
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 // Handy for debugging CORS/headers in prod
@@ -344,6 +348,33 @@ app.post("/api/uploads/sign", authMiddleware, async (req: Request, res: Response
 });
 
 /* --------------------------------- START -------------------------------- */
+
+// --- Global error handler (must be after all routes/middleware) ---
+app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("ERROR:", err?.stack || err);
+
+  // Reflect the Origin if allowed, so the browser sees CORS even on errors
+  const origin = req.headers.origin as string | undefined;
+  // Reuse your allow logic: exact static origins + *.vercel.app previews
+  try {
+    if (!origin) {
+      res.setHeader("Access-Control-Allow-Origin", "*"); // no credentials case
+    } else {
+      const { hostname } = new URL(origin);
+      const allowed =
+        STATIC_ALLOWED_ORIGINS.has(origin) ||
+        (VERCEL_PREVIEWS_ENABLED && VERCEL_HOSTNAME_REGEX.test(hostname));
+      if (allowed) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Vary", "Origin");
+      }
+    }
+  } catch { /* ignore */ }
+
+  // If you don't use cookies, it's fine to omit Allow-Credentials
+  res.status(500).json({ error: err?.message || "Server error" });
+});
+
 
 const port = Number(process.env.PORT || 8080);
 app.listen(port, () => console.log(`API listening on http://localhost:${port}`));

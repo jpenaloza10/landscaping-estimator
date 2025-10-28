@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { createEstimate, listAssemblies } from "../lib/api";
 import DownloadPdfButton from "../components/DownloadPdfButton";
 
@@ -54,6 +55,8 @@ export default function EstimateWizard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const navigate = useNavigate();
+
   // Load assemblies on mount
   useEffect(() => {
     setError("");
@@ -62,7 +65,9 @@ export default function EstimateWizard() {
         setAssemblies(data || []);
         if (data?.length) setAssemblyId(data[0].id);
       })
-      .catch((e) => setError(e?.message || "Failed to load assemblies"));
+      .catch((e) =>
+        setError(e?.message || "Failed to load assemblies")
+      );
   }, []);
 
   // Keep state uppercase
@@ -91,12 +96,21 @@ export default function EstimateWizard() {
     setError("");
     setEstimate(null);
     try {
-      const est = await createEstimate({
+      const est = (await createEstimate({
         projectId: "demo-project", // TODO: replace with real project id
         location: { zip, state },
         lines: [{ assemblyId, inputs: { area } }],
-      });
-      setEstimate(est as Estimate);
+      })) as Estimate;
+
+      if (!est?.id) {
+        throw new Error("Estimate was created but no id was returned.");
+      }
+
+      // Store locally so the inline result block can still render if desired
+      setEstimate(est);
+
+      // Auto-navigate to the PDF viewer route for a clean proposal experience
+      navigate(`/proposals/${est.id}`);
     } catch (e: any) {
       setError(e?.message || "Failed to create estimate");
     } finally {
@@ -204,7 +218,8 @@ export default function EstimateWizard() {
                 {estimate.lines.map((line) => (
                   <li key={line.id ?? line.assemblyId} className="border-t py-2">
                     <div className="text-slate-700">
-                      Assembly: <span className="font-medium">{line.assemblyId}</span>
+                      Assembly:{" "}
+                      <span className="font-medium">{line.assemblyId}</span>
                     </div>
                     <ul className="pl-4 list-disc">
                       {line.items?.map((it, idx) => (

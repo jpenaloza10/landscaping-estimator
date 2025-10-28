@@ -304,7 +304,6 @@ export function getProposalPdfUrl(estimateId: string): string {
 export async function downloadProposalPdf(estimateId: string): Promise<Blob> {
   const res = await apiRaw(`/api/proposals/${encodeURIComponent(estimateId)}.pdf`, {
     method: "GET",
-    // headers added by apiRaw (auth), content-type handled by server
   });
   return res.blob();
 }
