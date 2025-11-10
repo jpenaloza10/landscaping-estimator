@@ -67,6 +67,13 @@ model AssemblyItem {
   unit       String // e.g., "pallet", "ton", "bag", "hr"
   unitCost   Decimal  @db.Decimal(10, 2)
   qtyFormula String // store a simple expression like "area/100" or "perimeter/10"
+
+  /// Sprint 3 (optional, recommended):
+  /// Link an item to a catalog Material for dynamic pricing.
+  materialId String?
+  material   Material? @relation(fields: [materialId], references: [id])
+
+  @@index([materialId])
 }
 
 model Template {
@@ -97,9 +104,11 @@ model Estimate {
   tax       Decimal        @default(0) @db.Decimal(12, 2)
   total     Decimal        @default(0) @db.Decimal(12, 2)
   lines     EstimateLine[]
-  location  Json? // { zip, city, state, country }
-  createdAt DateTime       @default(now())      @map("created_at")
-  updatedAt DateTime       @updatedAt           @map("updated_at")
+  location  Json? // { zip, city, state, country, lat, lng, vendorLat?, vendorLng? }
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  @@index([projectId])
 }
 
 model EstimateLine {
@@ -109,7 +118,101 @@ model EstimateLine {
   assemblyId String
   assembly   Assembly @relation(fields: [assemblyId], references: [id], onDelete: Restrict)
   inputs     Json // e.g., { area: 320, perimeter: 80, depthIn: 2 }
-  items      Json // resolved items w/ qty & cost at calc-time
+  items      Json // resolved items w/ qty & cost at calc-time (include provider/source meta)
   lineTotal  Decimal  @db.Decimal(12, 2)
   notes      String?
+
+  @@index([estimateId])
+  @@index([assemblyId])
+}
+
+/**
+ * ===========================
+ * SPRINT 3: Pricing & Costs
+ * ===========================
+ */
+
+/// Catalog of priceable materials (stone, sand, pipe, mulch, etc.)
+model Material {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  uom       String // "ton", "pallet", "bag", "hr"
+  density   Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vendorPrices  VendorPrice[]
+  priceSnaps    PriceSnapshot[]
+  assemblyItems AssemblyItem[]
+
+  @@index([slug])
+}
+
+/// Suppliers, retailers, or index sources
+model Vendor {
+  id        String   @id @default(cuid())
+  name      String
+  type      String // "supplier" | "retail" | "marketplace" | "index"
+  homeZip   String?
+  regions   String[] // served zips/regions (optional)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prices VendorPrice[]
+
+  @@index([type])
+  @@index([homeZip])
+}
+
+/// Normalized vendor pricing records (latest wins)
+model VendorPrice {
+  id       String @id @default(cuid())
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  sku         String?
+  locationKey String? // zip, storeId, region code
+  currency    String   @default("USD")
+  unitCost    Decimal  @db.Decimal(12, 4)
+  fetchedAt   DateTime @default(now())
+  sourceMeta  Json?
+
+  @@index([materialId, vendorId])
+  @@index([materialId, locationKey])
+  @@index([fetchedAt])
+}
+
+/// Regional multipliers for costs (labor or baseline materials)
+/// Example keys: "94103", "US-CA-LosAngeles", "US-CA"
+model RegionalFactor {
+  id        String   @id @default(cuid())
+  regionKey String   @unique
+  factor    Float // 1.12 => +12% vs baseline
+  asOf      DateTime @default(now())
+  source    String // "city_index" | "manual"
+
+  @@index([regionKey])
+  @@index([asOf])
+}
+
+/// Cached, auditable resolved prices by material & zip
+model PriceSnapshot {
+  id         String   @id @default(cuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  zip        String
+  unitCost   Decimal  @db.Decimal(12, 4)
+  currency   String   @default("USD")
+  source     String // "supplier" | "retail" | "marketplace" | "index"
+  provider   String // e.g., "SupplierCSV", "RetailX", "CityIndex"
+  fetchedAt  DateTime @default(now())
+  ttlMinutes Int      @default(1440)
+  meta       Json?
+
+  @@index([materialId, zip, fetchedAt])
+  @@index([zip])
 }

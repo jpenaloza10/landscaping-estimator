@@ -4,6 +4,7 @@ import cors from "cors";
 import bcrypt from "bcryptjs";
 import projects from "./routes/projects";
 import assembliesRouter from "./routes/assemblies";
+import pricingRouter from "./routes/pricing";
 import { prisma } from "./prisma";
 import { SafeUser } from "./types/user";
 import { geocode } from "./geocode";
@@ -88,6 +89,8 @@ app.get("/", (_req, res) => {
 app.use("/api/projects", projects);
 
 app.use("/api/assemblies", assembliesRouter);
+
+app.use("/api/pricing", pricingRouter);
 
 app.get("/api/assemblies/ping", (_req, res) => {
   res.json({ ok: true, when: new Date().toISOString() });
