@@ -233,6 +233,8 @@ export interface EstimateItem {
   unitCost: number;
   qty: number;
   extended: number;
+  provider?: string;
+  source?: string;
 }
 
 export interface EstimateLine {
@@ -266,9 +268,7 @@ export async function listTemplates(): Promise<Template[]> {
   return api<Template[]>("/api/assemblies/templates");
 }
 
-/** ---- Estimates ----
- * createEstimate: server computes takeoff, tax, totals
- */
+/** ---- Estimates ---- */
 export async function createEstimate(payload: {
   projectId: string;
   location?: Record<string, unknown>;
@@ -280,32 +280,117 @@ export async function createEstimate(payload: {
   });
 }
 
-/** Get a single estimate by id */
 export async function getEstimate(estimateId: string): Promise<Estimate> {
   return api<Estimate>(`/api/estimates/${encodeURIComponent(estimateId)}`);
 }
 
-/** List all estimates for a project (if your API supports it) */
 export async function listEstimates(projectId: string): Promise<Estimate[]> {
-  return api<Estimate[]>(`/api/projects/${encodeURIComponent(projectId)}/estimates`);
+  return api<Estimate[]>(
+    `/api/projects/${encodeURIComponent(projectId)}/estimates`
+  );
 }
 
-/** ---- Proposal PDF helpers ----
- * Link usage:
- *   <a href={getProposalPdfUrl(id)} target="_blank" rel="noreferrer">Open PDF</a>
- * Programmatic download:
- *   const blob = await downloadProposalPdf(id); // then createObjectURL(blob)
- */
+/** Finalize an estimate & (on backend) create budget snapshot */
+export async function finalizeEstimate(estimateId: string): Promise<void> {
+  await api(`/api/estimates/${encodeURIComponent(estimateId)}/finalize`, {
+    method: "POST",
+  });
+}
+
+/** ---- Proposal PDF helpers ---- */
 export function getProposalPdfUrl(estimateId: string): string {
   if (!BASE_URL) throw new Error("VITE_API_URL is not set.");
   return `${BASE_URL}/api/proposals/${encodeURIComponent(estimateId)}.pdf`;
 }
 
-export async function downloadProposalPdf(estimateId: string): Promise<Blob> {
-  const res = await apiRaw(`/api/proposals/${encodeURIComponent(estimateId)}.pdf`, {
-    method: "GET",
-  });
+export async function downloadProposalPdf(
+  estimateId: string
+): Promise<Blob> {
+  const res = await apiRaw(
+    `/api/proposals/${encodeURIComponent(estimateId)}.pdf`,
+    { method: "GET" }
+  );
   return res.blob();
+}
+
+/* =========================
+   Sprint 4: Expense Tracking
+   ========================= */
+
+export type ExpenseCategory =
+  | "MATERIAL"
+  | "LABOR"
+  | "EQUIPMENT"
+  | "SUBCONTRACTOR"
+  | "OTHER";
+
+export interface Expense {
+  id: string;
+  projectId: string;
+  estimateId?: string | null;
+  estimateLineId?: string | null;
+  category: ExpenseCategory;
+  vendor?: string | null;
+  description?: string | null;
+  amount: number;
+  currency: string;
+  date: string;         // ISO string
+  receiptUrl?: string | null;
+  meta?: Record<string, unknown> | null;
+  createdById?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BudgetReport {
+  hasBaseline: boolean;
+  baselineTotal: number;
+  byCategory: Record<ExpenseCategory, number>;
+  actualByCategory: Record<ExpenseCategory, number>;
+  remainingByCategory: Record<ExpenseCategory, number>;
+  totalActual: number;
+  totalRemaining: number;
+}
+
+/** Get real-time budget vs actual for a project */
+export async function getBudgetReport(
+  projectId: string
+): Promise<BudgetReport> {
+  return api<BudgetReport>(
+    `/api/reports/budget?projectId=${encodeURIComponent(projectId)}`
+  );
+}
+
+/** List expenses for a project */
+export async function listExpenses(
+  projectId: string
+): Promise<Expense[]> {
+  return api<Expense[]>(
+    `/api/expenses?projectId=${encodeURIComponent(projectId)}`
+  );
+}
+
+/** Create a manual expense entry */
+export async function createExpense(input: {
+  projectId: string;
+  estimateId?: string;
+  estimateLineId?: string;
+  category: ExpenseCategory | string;
+  vendor?: string;
+  description?: string;
+  amount: number;
+  currency?: string;
+  date: string; // YYYY-MM-DD or ISO
+  receiptUrl?: string;
+  meta?: Record<string, unknown>;
+}): Promise<Expense> {
+  return api<Expense>("/api/expenses", {
+    method: "POST",
+    body: {
+      ...input,
+      currency: input.currency || "USD",
+    },
+  });
 }
 
 /* =========================

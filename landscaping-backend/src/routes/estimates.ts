@@ -3,11 +3,10 @@ import { prisma } from "../prisma";
 import { evalFormula, applyWaste } from "../services/calc";
 import { computeTax } from "../services/tax";
 import type { AssemblyItem } from "@prisma/client";
-
-// === Sprint 3 imports ===
 import { resolveUnitPrice } from "../services/pricing/resolvePrice";
 import { getRegionalFactor, makeRegionKey } from "../services/region";
 import { estimateDelivery } from "../services/delivery";
+import { createBudgetSnapshot } from "../services/budget";
 
 const r = Router();
 
@@ -37,10 +36,13 @@ function coerceProjectId(id: number | string): number {
 
 // helper: kebab-case for fallback material slugs
 function kebab(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 }
 
-// create & calculate
+// === Create & calculate estimate ===
 r.post("/", async (req, res) => {
   try {
     const { projectId, location, lines } = req.body as CreateEstimateInput;
@@ -57,13 +59,12 @@ r.post("/", async (req, res) => {
       qty: number;
       extended: number;
       // provenance/debug
-      provider?: string;     // e.g., SupplierCSV, RetailX, CityIndex, LaborRegional, RegionalizedIndex, DeliveryEstimator
-      source?: string;       // supplier | retail | marketplace | index | baseline | delivery
-      fetchedAt?: string;    // ISO timestamp for live prices
+      provider?: string;      // SupplierCSV, RetailX, CityIndex, LaborRegional, RegionalizedIndex, DeliveryEstimator
+      source?: string;        // supplier | retail | marketplace | index | baseline | delivery
+      fetchedAt?: string;     // ISO timestamp for live prices
       deliveryShare?: number; // proportional delivery allocated to this item
     };
 
-    // We'll compute all lines, then (optionally) allocate delivery proportionally.
     const calcLines: Array<{
       assemblyId: string;
       inputs: Record<string, number>;
@@ -71,7 +72,6 @@ r.post("/", async (req, res) => {
       lineTotal: number;
     }> = [];
 
-    // For proportional delivery allocation later
     let subtotal = 0;
 
     for (const line of lines) {
@@ -82,24 +82,21 @@ r.post("/", async (req, res) => {
       if (!assembly) continue;
 
       const inputs = line.inputs || {};
-
-      // Build items with Sprint-3 pricing & regionalization.
       const items: ResolvedItem[] = [];
+
       for (const it of assembly.items as AssemblyItem[]) {
         const rawQty = evalFormula(it.qtyFormula, inputs);
         const qty = applyWaste(rawQty, assembly.wastePct);
 
-        // start with your stored unit cost as baseline
         let unitCost = Number(it.unitCost);
         let provider = "baseline";
         let source = "index";
         let fetchedAt: string | undefined;
 
-        // Dynamic pricing for non-labor items (very simple heuristic: skip when unit == "hr")
         const isLabor = it.unit.toLowerCase() === "hr";
 
         if (!isLabor) {
-          // Fallback material slug (replace with real materialId if you add it to schema)
+          // Fallback material slug (ideally replace with materialId on AssemblyItem)
           const materialSlug = kebab(`${assembly.slug}-${it.name}`);
           const live = await resolveUnitPrice({
             materialSlug,
@@ -123,14 +120,23 @@ r.post("/", async (req, res) => {
             source = "index";
           }
         } else {
-          // Labor: optionally scale by regional factor (commonly labor varies regionally)
+          // Labor: scale by regional factor
           unitCost = unitCost * (regionFactor || 1);
           provider = "LaborRegional";
           source = "index";
         }
 
         const extended = qty * unitCost;
-        items.push({ name: it.name, unit: it.unit, unitCost, qty, extended, provider, source, fetchedAt });
+        items.push({
+          name: it.name,
+          unit: it.unit,
+          unitCost,
+          qty,
+          extended,
+          provider,
+          source,
+          fetchedAt,
+        });
       }
 
       const lineTotal = items.reduce((acc, curr) => acc + curr.extended, 0);
@@ -144,9 +150,7 @@ r.post("/", async (req, res) => {
       });
     }
 
-    // === Optional Delivery Cost Estimator & allocation ===
-    // We only compute delivery if we have both origin and destination coords.
-    // Pass in req.body.location: { vendorLat, vendorLng, lat, lng }
+    // === Delivery Cost Estimator & allocation (optional) ===
     let deliveryTotal = 0;
     const haveCoords =
       location?.vendorLat != null &&
@@ -161,23 +165,24 @@ r.post("/", async (req, res) => {
       );
       deliveryTotal = d.total;
 
-      // allocate proportionally by lineTotal and add a synthetic item to each line
       const linesSum = calcLines.reduce((a, l) => a + l.lineTotal, 0);
       if (linesSum > 0 && deliveryTotal > 0) {
         for (const l of calcLines) {
           const share = (l.lineTotal / linesSum) * deliveryTotal;
 
-          // annotate each existing item with its per-item share of delivery
+          // annotate each existing item with its per-item share
           l.items = l.items.map((it) => ({
             ...it,
-            deliveryShare: Number(((it.extended / l.lineTotal) * share).toFixed(2)),
+            deliveryShare: Number(
+              ((it.extended / l.lineTotal) * share).toFixed(2)
+            ),
           }));
 
-          // add a synthetic Delivery line (explicit)
+          // add explicit delivery item
           l.items.push({
             name: "Delivery (allocated)",
             unit: "each",
-            unitCost: share, // unit cost for 1 qty
+            unitCost: share,
             qty: 1,
             extended: share,
             provider: "DeliveryEstimator",
@@ -186,7 +191,8 @@ r.post("/", async (req, res) => {
 
           l.lineTotal += share;
         }
-        // include delivery in taxable subtotal (NOTE: check your jurisdiction)
+
+        // delivery is included in subtotal (adjust if your tax rules differ)
         subtotal += deliveryTotal;
       }
     }
@@ -200,7 +206,7 @@ r.post("/", async (req, res) => {
 
     const estimate = await prisma.estimate.create({
       data: {
-        projectId: projectIdNum, // <-- ensure number in schema or adjust type
+        projectId: projectIdNum,
         location,
         subtotal,
         tax,
@@ -219,7 +225,6 @@ r.post("/", async (req, res) => {
     res.json({
       ...estimate,
       taxRate: rate,
-      // Send delivery metadata back for transparency/debug
       delivery: haveCoords
         ? { total: deliveryTotal, includedInSubtotal: true }
         : { total: 0, includedInSubtotal: false },
@@ -227,7 +232,42 @@ r.post("/", async (req, res) => {
     });
   } catch (err: any) {
     console.error(err);
-    res.status(400).json({ error: err?.message ?? "Bad request" });
+    res
+      .status(400)
+      .json({ error: err?.message ?? "Bad request while creating estimate" });
+  }
+});
+
+// === Finalize estimate & create Budget Snapshot ===
+// Call this when the user approves/selects this estimate as the project baseline.
+r.post("/:id/finalize", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const estimate = await prisma.estimate.findUnique({
+      where: { id },
+    });
+
+    if (!estimate) {
+      return res.status(404).json({ error: "Estimate not found" });
+    }
+
+    // Create a budget snapshot tied to this estimate + project
+    // Adjust createBudgetSnapshot signature if your implementation differs.
+    const snapshot = await createBudgetSnapshot(estimate.projectId as any, estimate.id);
+
+    // Optional: if you add a `status` column on Estimate, update it here:
+    // await prisma.estimate.update({
+    //   where: { id },
+    //   data: { status: "FINALIZED" },
+    // });
+
+    res.json({ ok: true, snapshot });
+  } catch (err: any) {
+    console.error(err);
+    res.status(400).json({
+      error: err?.message ?? "Failed to finalize estimate and create snapshot",
+    });
   }
 });
 

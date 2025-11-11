@@ -5,6 +5,8 @@ import bcrypt from "bcryptjs";
 import projects from "./routes/projects";
 import assembliesRouter from "./routes/assemblies";
 import pricingRouter from "./routes/pricing";
+import expensesRouter from "./routes/expenses";
+import reportsRouter from "./routes/reports";
 import { prisma } from "./prisma";
 import { SafeUser } from "./types/user";
 import { geocode } from "./geocode";
@@ -91,6 +93,10 @@ app.use("/api/projects", projects);
 app.use("/api/assemblies", assembliesRouter);
 
 app.use("/api/pricing", pricingRouter);
+
+app.use("/api/expenses", expensesRouter);
+
+app.use("/api/reports", reportsRouter);
 
 app.get("/api/assemblies/ping", (_req, res) => {
   res.json({ ok: true, when: new Date().toISOString() });
