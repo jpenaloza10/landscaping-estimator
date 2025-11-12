@@ -1,20 +1,19 @@
 import { Router } from "express";
 import { PrismaClient, ExpenseCategory } from "@prisma/client";
+
 const prisma = new PrismaClient();
-const r = Router;
+const router = Router();
 
 // helper to validate category safely
 function parseCategory(c: string): ExpenseCategory {
   const v = c?.toUpperCase();
-  if (["MATERIAL","LABOR","EQUIPMENT","SUBCONTRACTOR","OTHER"].includes(v)) {
+  if (["MATERIAL", "LABOR", "EQUIPMENT", "SUBCONTRACTOR", "OTHER"].includes(v)) {
     return v as ExpenseCategory;
   }
   return "OTHER";
 }
 
 // POST /api/expenses
-const router = Router();
-
 router.post("/", async (req, res) => {
   try {
     const {
@@ -28,44 +27,55 @@ router.post("/", async (req, res) => {
       currency,
       date,
       receiptUrl,
-      meta
+      meta,
+      userId,
     } = req.body;
 
-    if (!projectId || !amount || !date) {
-      return res.status(400).json({ error: "projectId, amount, date required" });
+    const numericProjectId = Number(projectId);
+    if (!numericProjectId || !amount || !date) {
+      return res
+        .status(400)
+        .json({ error: "projectId (number), amount, and date are required" });
     }
 
     const expense = await prisma.expense.create({
       data: {
-        projectId,
-        estimateId,
-        estimateLineId,
+        projectId: numericProjectId,
+        estimateId: estimateId || null,
+        estimateLineId: estimateLineId || null,
         category: parseCategory(category),
-        vendor,
-        description,
-        amount,
+        vendor: vendor || null,
+        description: description || null,
+        amount: Number(amount),
         currency: currency || "USD",
         date: new Date(date),
-        receiptUrl,
-        meta
-      }
+        receiptUrl: receiptUrl || null,
+        meta: meta || {},
+        userId: userId ?? null,
+      },
     });
 
     res.json(expense);
-  } catch (e:any) {
+  } catch (e: any) {
     console.error(e);
     res.status(500).json({ error: e.message });
   }
 });
 
-// GET /api/expenses?projectId=...
+// GET /api/expenses?projectId=123
 router.get("/", async (req, res) => {
   const { projectId } = req.query;
-  if (!projectId) return res.status(400).json({ error: "projectId required" });
+  const numericProjectId = Number(projectId);
+
+  if (!numericProjectId) {
+    return res
+      .status(400)
+      .json({ error: "projectId query param (number) is required" });
+  }
 
   const expenses = await prisma.expense.findMany({
-    where: { projectId: String(projectId) },
-    orderBy: { date: "asc" }
+    where: { projectId: numericProjectId },
+    orderBy: { date: "asc" },
   });
 
   res.json(expenses);

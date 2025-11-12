@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { getBudgetReport, listExpenses, createExpense } from "../lib/api";
+import { API } from "../lib/api"; // ✅ Export endpoints base URL
+import ReceiptUpload from "../components/ReceiptUpload";
 
 const PROJECT_ID = "demo-project"; // replace with real selection
 
@@ -44,8 +46,37 @@ export default function ExpensesPage() {
     await refresh();
   }
 
+  // ✅ AI Categorization function
+  async function handleAICategorize(id: string) {
+    try {
+      await fetch(`${API}/api/expenses/${id}/auto-categorize`, { method: "POST" });
+      await refresh();
+    } catch (err) {
+      console.error("AI categorization failed", err);
+    }
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[2fr,3fr]">
+      {/* ✅ Export toolbar (full width) */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm lg:col-span-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-semibold">Exports</span>
+          <a
+            href={`${API}/api/export/expenses.csv?projectId=${PROJECT_ID}`}
+            className="text-xs underline text-blue-600 hover:text-blue-800"
+          >
+            Download Expenses CSV
+          </a>
+          <a
+            href={`${API}/api/export/budget.csv?projectId=${PROJECT_ID}`}
+            className="text-xs underline text-blue-600 hover:text-blue-800"
+          >
+            Download Budget CSV
+          </a>
+        </div>
+      </div>
+
       {/* Left: Budget snapshot */}
       <section className="bg-white rounded-2xl p-4 shadow-sm">
         <h2 className="font-semibold mb-2">Budget Snapshot</h2>
@@ -88,15 +119,24 @@ export default function ExpensesPage() {
         )}
       </section>
 
-      {/* Right: Expense entry + list */}
+      {/* Right: Receipt upload + Expense entry + list */}
       <section className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-4">
-        <form onSubmit={onSubmit} className="grid gap-2 sm:grid-cols-5 items-end text-xs">
+        <ReceiptUpload
+          projectId={PROJECT_ID}
+          onCreated={refresh}
+        />
+
+        {/* Manual expense form */}
+        <form
+          onSubmit={onSubmit}
+          className="grid gap-2 sm:grid-cols-5 items-end text-xs"
+        >
           <div className="sm:col-span-1">
             <label className="block mb-1 font-medium">Category</label>
             <select
               className="w-full border rounded p-2"
               value={form.category}
-              onChange={e=>setForm(f=>({ ...f, category: e.target.value }))}
+              onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
             >
               {CATEGORIES.map(c => <option key={c}>{c}</option>)}
             </select>
@@ -106,7 +146,7 @@ export default function ExpensesPage() {
             <input
               className="w-full border rounded p-2"
               value={form.vendor}
-              onChange={e=>setForm(f=>({ ...f, vendor: e.target.value }))}
+              onChange={e => setForm(f => ({ ...f, vendor: e.target.value }))}
             />
           </div>
           <div className="sm:col-span-1">
@@ -116,7 +156,7 @@ export default function ExpensesPage() {
               step="0.01"
               className="w-full border rounded p-2"
               value={form.amount}
-              onChange={e=>setForm(f=>({ ...f, amount: e.target.value }))}
+              onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
               required
             />
           </div>
@@ -126,7 +166,7 @@ export default function ExpensesPage() {
               type="date"
               className="w-full border rounded p-2"
               value={form.date}
-              onChange={e=>setForm(f=>({ ...f, date: e.target.value }))}
+              onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
               required
             />
           </div>
@@ -143,26 +183,36 @@ export default function ExpensesPage() {
             <input
               className="w-full border rounded p-2"
               value={form.description}
-              onChange={e=>setForm(f=>({ ...f, description: e.target.value }))}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
             />
           </div>
         </form>
 
+        {/* Expense list */}
         <div className="border-t pt-3 flex-1 overflow-auto">
           <h3 className="font-semibold text-sm mb-2">Expenses</h3>
           <div className="space-y-1 text-xs">
             {expenses.map(exp => (
               <div key={exp.id} className="flex justify-between gap-2 border-b pb-1">
                 <div className="flex flex-col">
-                  <span className="font-medium">{exp.vendor || exp.category}</span>
+                  <span className="font-medium">
+                    {exp.vendor || exp.category}
+                  </span>
                   <span className="text-slate-500">
                     {exp.description || "No description"}
                   </span>
                 </div>
                 <div className="text-right">
                   <div>${Number(exp.amount).toFixed(2)}</div>
-                  <div className="text-slate-500">
-                    {exp.category} • {exp.date.slice(0,10)}
+                  <div className="text-slate-500 flex items-center justify-end gap-2">
+                    {exp.category} • {String(exp.date).slice(0,10)}
+                    {/* ✅ AI Categorize button */}
+                    <button
+                      onClick={() => handleAICategorize(exp.id)}
+                      className="text-[10px] border rounded px-2 py-1 hover:bg-slate-100"
+                    >
+                      Categorize
+                    </button>
                   </div>
                 </div>
               </div>

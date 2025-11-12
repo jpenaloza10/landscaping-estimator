@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -19,23 +20,26 @@ model User {
 }
 
 model Project {
-  id              Int              @id @default(autoincrement())
-  user_id         Int
-  name            String
-  description     String?
+  id          Int     @id @default(autoincrement())
+  user_id     Int
+  name        String
+  description String?
+
   // New fields
-  address         String?
-  city            String?
-  state           String?
-  postal_code     String?
-  country         String?
-  latitude        Float?
-  longitude       Float?
+  address     String?
+  city        String?
+  state       String?
+  postal_code String?
+  country     String?
+  latitude    Float?
+  longitude   Float?
   // keep the original simple location string for display/search if you like
-  location        String?
+  location    String?
+
   estimates       Estimate[]
   budgetSnapshots BudgetSnapshot[]
   expenses        Expense[]
+  changeOrders    ChangeOrder[]    @relation(name: "ProjectChangeOrders")
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -113,6 +117,7 @@ model Estimate {
 
   budgetSnapshots BudgetSnapshot[]
   expenses        Expense[]
+  changeOrders    ChangeOrder[]    @relation(name: "EstimateChangeOrders")
 
   @@index([projectId])
 }
@@ -272,4 +277,29 @@ model Expense {
   @@index([estimateId])
   @@index([category])
   @@index([date])
+}
+
+model ChangeOrder {
+  id String @id @default(cuid())
+
+  // FIX: Match Project.id (Int) and add named relation + onDelete
+  projectId Int
+  project   Project @relation(name: "ProjectChangeOrders", fields: [projectId], references: [id], onDelete: Cascade)
+
+  // FIX: Back-relation on Estimate and onDelete: SetNull
+  estimateId String?
+  estimate   Estimate? @relation(name: "EstimateChangeOrders", fields: [estimateId], references: [id], onDelete: SetNull)
+
+  title       String
+  description String?
+  status      String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  amount      Decimal   @db.Decimal(12, 2) // net change (+/-)
+  createdAt   DateTime  @default(now())
+  decidedAt   DateTime?
+
+  meta Json?
+
+  @@index([projectId])
+  @@index([estimateId])
+  @@index([status])
 }

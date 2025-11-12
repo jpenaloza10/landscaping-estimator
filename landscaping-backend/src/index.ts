@@ -7,6 +7,10 @@ import assembliesRouter from "./routes/assemblies";
 import pricingRouter from "./routes/pricing";
 import expensesRouter from "./routes/expenses";
 import reportsRouter from "./routes/reports";
+import expenseReceiptRouter from "./routes/expenseReceipt";
+import expenseAIRouter from "./routes/expenseAI";
+import changeOrdersRouter from "./routes/changeOrders";
+import exportRouter from "./routes/export";
 import { prisma } from "./prisma";
 import { SafeUser } from "./types/user";
 import { geocode } from "./geocode";
@@ -97,6 +101,14 @@ app.use("/api/pricing", pricingRouter);
 app.use("/api/expenses", expensesRouter);
 
 app.use("/api/reports", reportsRouter);
+
+app.use("/api/expenses", expenseReceiptRouter);
+
+app.use("/api/expenses", expenseAIRouter);
+
+app.use("/api/change-orders", changeOrdersRouter);
+
+app.use("/api/export", exportRouter);
 
 app.get("/api/assemblies/ping", (_req, res) => {
   res.json({ ok: true, when: new Date().toISOString() });
