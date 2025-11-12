@@ -8,6 +8,9 @@ const RAW_BASE = import.meta.env.VITE_API_URL as string | undefined;
 // strip trailing slashes
 const BASE_URL = RAW_BASE ? RAW_BASE.replace(/\/+$/, "") : undefined;
 
+// ✅ Export a named constant so pages can `import { API } from "../lib/api"`
+export const API = BASE_URL;
+
 /* =========================
    Errors + Options
    ========================= */
