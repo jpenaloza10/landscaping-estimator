@@ -7,20 +7,23 @@ const router = Router();
 const prisma = new PrismaClient();
 
 /**
- * Resolve a project ID by either numeric ID, UUID, or slug
+ * Resolve a project ID by either explicit ID or non-unique slug.
+ * Uses findFirst for slug because `slug` is not @unique in your schema.
  */
 async function resolveProjectId(input: { projectId?: string | null; projectSlug?: string | null }) {
-  if (input.projectId && String(input.projectId).trim()) {
-    return String(input.projectId).trim();
-  }
-  if (input.projectSlug && String(input.projectSlug).trim()) {
-    const project = await prisma.project.findUnique({
-      where: { slug: String(input.projectSlug).trim() },
+  const pid = typeof input.projectId === "string" ? input.projectId.trim() : "";
+  if (pid) return pid;
+
+  const pslug = typeof input.projectSlug === "string" ? input.projectSlug.trim() : "";
+  if (pslug) {
+    const project = await prisma.project.findFirst({
+      where: { slug: pslug },
       select: { id: true },
     });
     if (!project) throw new Error("Project not found for given slug");
     return project.id;
   }
+
   throw new Error("projectId or projectSlug is required");
 }
 
@@ -35,8 +38,8 @@ router.get("/budget", async (req, res) => {
     const report = await getProjectBudgetReport(projectId);
     res.json(report);
   } catch (error: any) {
-    console.error("Budget report error:", error.message);
-    res.status(400).json({ error: error.message });
+    console.error("Budget report error:", error?.message || error);
+    res.status(400).json({ error: error?.message ?? "Failed to get budget report" });
   }
 });
 
