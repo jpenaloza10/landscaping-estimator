@@ -1,14 +1,23 @@
 import { useEffect, useState } from "react";
-import { getBudgetReport, listExpenses, createExpense } from "../lib/api";
-import { API } from "../lib/api"; // ✅ Export endpoints base URL
+import { API } from "../lib/api"; // base URL only
 import ReceiptUpload from "../components/ReceiptUpload";
 
-const PROJECT_ID = "demo-project"; // replace with real selection
+const PROJECT_SLUG = "demo-project"; // use your real project slug
 
 const CATEGORIES = ["MATERIAL","LABOR","EQUIPMENT","SUBCONTRACTOR","OTHER"] as const;
 
+type BudgetReport = {
+  hasBaseline: boolean;
+  baselineTotal: number;
+  totalActual: number;
+  totalRemaining: number;
+  byCategory: Record<string, number>;
+  actualByCategory: Record<string, number>;
+  remainingByCategory: Record<string, number>;
+};
+
 export default function ExpensesPage() {
-  const [report, setReport] = useState<any>(null);
+  const [report, setReport] = useState<BudgetReport | null>(null);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [form, setForm] = useState({
     category: "MATERIAL",
@@ -19,23 +28,57 @@ export default function ExpensesPage() {
   });
   const [loading, setLoading] = useState(true);
 
-  async function refresh() {
-    setLoading(true);
-    const [r, e] = await Promise.all([
-      getBudgetReport(PROJECT_ID),
-      listExpenses(PROJECT_ID)
-    ]);
-    setReport(r);
-    setExpenses(e);
-    setLoading(false);
+  // --- Local fetchers that pass projectSlug (avoids api.ts changes) ---
+  async function fetchBudgetReportBySlug(slug: string): Promise<BudgetReport> {
+    const res = await fetch(`${API}/api/reports/budget?projectSlug=${encodeURIComponent(slug)}`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
   }
 
-  useEffect(() => { refresh(); }, []);
+  async function fetchExpensesBySlug(slug: string) {
+    const res = await fetch(`${API}/api/expenses?projectSlug=${encodeURIComponent(slug)}`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  async function createExpenseBySlug(payload: {
+    projectSlug: string;
+    category: string;
+    vendor?: string;
+    description?: string;
+    amount: number;
+    date: string;
+  }) {
+    const res = await fetch(`${API}/api/expenses`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+  // -------------------------------------------------------------------
+
+  async function refresh() {
+    setLoading(true);
+    try {
+      const [r, e] = await Promise.all([
+        fetchBudgetReportBySlug(PROJECT_SLUG),
+        fetchExpensesBySlug(PROJECT_SLUG)
+      ]);
+      setReport(r);
+      setExpenses(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { void refresh(); }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await createExpense({
-      projectId: PROJECT_ID,
+    await createExpenseBySlug({
+      projectSlug: PROJECT_SLUG,
       category: form.category,
       vendor: form.vendor || undefined,
       description: form.description || undefined,
@@ -63,13 +106,13 @@ export default function ExpensesPage() {
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-semibold">Exports</span>
           <a
-            href={`${API}/api/export/expenses.csv?projectId=${PROJECT_ID}`}
+            href={`${API}/api/export/expenses.csv?projectSlug=${encodeURIComponent(PROJECT_SLUG)}`}
             className="text-xs underline text-blue-600 hover:text-blue-800"
           >
             Download Expenses CSV
           </a>
           <a
-            href={`${API}/api/export/budget.csv?projectId=${PROJECT_ID}`}
+            href={`${API}/api/export/budget.csv?projectSlug=${encodeURIComponent(PROJECT_SLUG)}`}
             className="text-xs underline text-blue-600 hover:text-blue-800"
           >
             Download Budget CSV
@@ -94,9 +137,9 @@ export default function ExpensesPage() {
             </p>
             <div className="grid gap-2 text-xs">
               {CATEGORIES.map(cat => {
-                const b = report.byCategory[cat] || 0;
-                const a = report.actualByCategory[cat] || 0;
-                const rem = report.remainingByCategory[cat] || 0;
+                const b = report.byCategory?.[cat] || 0;
+                const a = report.actualByCategory?.[cat] || 0;
+                const rem = report.remainingByCategory?.[cat] || 0;
                 if (b === 0 && a === 0) return null;
                 return (
                   <div key={cat} className="flex justify-between items-center">
@@ -121,8 +164,9 @@ export default function ExpensesPage() {
 
       {/* Right: Receipt upload + Expense entry + list */}
       <section className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-4">
+        {/* We keep prop name "projectId" for compatibility with your component. Passing the slug string is fine if your backend resolves it. */}
         <ReceiptUpload
-          projectId={PROJECT_ID}
+          projectId={PROJECT_SLUG}
           onCreated={refresh}
         />
 

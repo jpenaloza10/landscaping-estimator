@@ -355,7 +355,11 @@ export interface BudgetReport {
   totalRemaining: number;
 }
 
-/** Get real-time budget vs actual for a project */
+/** =========================
+ *  Project-by-ID helpers (existing)
+ *  ========================= */
+
+/** Get real-time budget vs actual for a project (by ID) */
 export async function getBudgetReport(
   projectId: string
 ): Promise<BudgetReport> {
@@ -364,7 +368,7 @@ export async function getBudgetReport(
   );
 }
 
-/** List expenses for a project */
+/** List expenses for a project (by ID) */
 export async function listExpenses(
   projectId: string
 ): Promise<Expense[]> {
@@ -373,9 +377,55 @@ export async function listExpenses(
   );
 }
 
-/** Create a manual expense entry */
+/** Create a manual expense entry (by ID) */
 export async function createExpense(input: {
   projectId: string;
+  estimateId?: string;
+  estimateLineId?: string;
+  category: ExpenseCategory | string;
+  vendor?: string;
+  description?: string;
+  amount: number;
+  currency?: string;
+  date: string; // YYYY-MM-DD or ISO
+  receiptUrl?: string;
+  meta?: Record<string, unknown>;
+}): Promise<Expense> {
+  return api<Expense>("/api/expenses", {
+    method: "POST",
+    body: {
+      ...input,
+      currency: input.currency || "USD",
+    },
+  });
+}
+
+/** =========================
+ *  NEW: Project-by-SLUG helpers (slug-friendly backend)
+ *  Use these to avoid 400s when your backend resolves slug→id.
+ *  ========================= */
+
+/** Get real-time budget vs actual for a project (by SLUG) */
+export async function getBudgetReportBySlug(
+  projectSlug: string
+): Promise<BudgetReport> {
+  return api<BudgetReport>(
+    `/api/reports/budget?projectSlug=${encodeURIComponent(projectSlug)}`
+  );
+}
+
+/** List expenses for a project (by SLUG) */
+export async function listExpensesBySlug(
+  projectSlug: string
+): Promise<Expense[]> {
+  return api<Expense[]>(
+    `/api/expenses?projectSlug=${encodeURIComponent(projectSlug)}`
+  );
+}
+
+/** Create a manual expense entry (by SLUG) */
+export async function createExpenseBySlug(input: {
+  projectSlug: string;
   estimateId?: string;
   estimateLineId?: string;
   category: ExpenseCategory | string;
