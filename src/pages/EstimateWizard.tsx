@@ -45,6 +45,9 @@ type Estimate = {
   location?: any;
 };
 
+// ✅ Numeric project ID for Option A
+const PROJECT_ID = Number(import.meta.env.VITE_DEFAULT_PROJECT_ID ?? 1);
+
 export default function EstimateWizard() {
   const [assemblies, setAssemblies] = useState<Assembly[]>([]);
   const [assemblyId, setAssemblyId] = useState<string>("");
@@ -65,9 +68,7 @@ export default function EstimateWizard() {
         setAssemblies(data || []);
         if (data?.length) setAssemblyId(data[0].id);
       })
-      .catch((e) =>
-        setError(e?.message || "Failed to load assemblies")
-      );
+      .catch((e) => setError(e?.message || "Failed to load assemblies"));
   }, []);
 
   // Keep state uppercase
@@ -96,8 +97,9 @@ export default function EstimateWizard() {
     setError("");
     setEstimate(null);
     try {
+      // ✅ Pass numeric projectId
       const est = (await createEstimate({
-        projectId: "demo-project", // TODO: replace with real project id
+        projectId: PROJECT_ID,
         location: { zip, state },
         lines: [{ assemblyId, inputs: { area } }],
       })) as Estimate;

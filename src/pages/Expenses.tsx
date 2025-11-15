@@ -167,7 +167,8 @@ export default function ExpensesPage() {
 
       {/* Right: Receipt upload + Expense entry + list */}
       <section className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-4">
-        <ReceiptUpload projectId={PROJECT_ID} onCreated={refresh} />
+        {/* 🔧 Pass a string here to match ReceiptUpload's prop type */}
+        <ReceiptUpload projectId={String(PROJECT_ID)} onCreated={refresh} />
 
         {/* Manual expense form */}
         <form onSubmit={onSubmit} className="grid gap-2 sm:grid-cols-5 items-end text-xs">
