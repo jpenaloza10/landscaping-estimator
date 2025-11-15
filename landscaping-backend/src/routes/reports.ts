@@ -6,40 +6,39 @@ import { PrismaClient } from "@prisma/client";
 const router = Router();
 const prisma = new PrismaClient();
 
-/**
- * Resolve a project ID by either explicit ID or non-unique slug.
- * Uses findFirst for slug because `slug` is not @unique in your schema.
- */
-async function resolveProjectId(input: { projectId?: string | null; projectSlug?: string | null }) {
-  const pid = typeof input.projectId === "string" ? input.projectId.trim() : "";
-  if (pid) return pid;
-
-  const pslug = typeof input.projectSlug === "string" ? input.projectSlug.trim() : "";
-  if (pslug) {
-    const project = await prisma.project.findFirst({
-      where: { slug: pslug },
-      select: { id: true },
-    });
-    if (!project) throw new Error("Project not found for given slug");
-    return project.id;
+/** Coerce a value to an integer; throw 400 if invalid */
+function toInt(value: unknown, fieldName: string): number {
+  const n = Number(value);
+  if (!Number.isInteger(n)) {
+    const err: any = new Error(`${fieldName} must be an integer`);
+    err.status = 400;
+    throw err;
   }
-
-  throw new Error("projectId or projectSlug is required");
+  return n;
 }
 
 router.get("/budget", async (req, res) => {
   try {
-    // Support either ?projectId=... or ?projectSlug=...
-    const projectId = await resolveProjectId({
-      projectId: (req.query.projectId as string) ?? undefined,
-      projectSlug: (req.query.projectSlug as string) ?? undefined,
+    // Require ?projectId=123 (Project.id is Int in Prisma)
+    const projectId = toInt(req.query.projectId, "projectId");
+
+    // Optional: ensure project exists; return 404 if not
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true },
     });
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
 
     const report = await getProjectBudgetReport(projectId);
-    res.json(report);
+    return res.json(report);
   } catch (error: any) {
+    const status = error?.status ?? 500;
     console.error("Budget report error:", error?.message || error);
-    res.status(400).json({ error: error?.message ?? "Failed to get budget report" });
+    return res
+      .status(status)
+      .json({ error: error?.message ?? "Failed to get budget report" });
   }
 });
 

@@ -5,10 +5,7 @@ import { supabase } from "./supabase";
    Base URL
    ========================= */
 const RAW_BASE = import.meta.env.VITE_API_URL as string | undefined;
-// strip trailing slashes
 const BASE_URL = RAW_BASE ? RAW_BASE.replace(/\/+$/, "") : undefined;
-
-// ✅ Export a named constant so pages can `import { API } from "../lib/api"`
 export const API = BASE_URL;
 
 /* =========================
@@ -32,7 +29,6 @@ export interface ApiOptions {
   signal?: AbortSignal;
 }
 
-/** Ensure all paths start with a leading slash */
 function normalizePath(path: string): string {
   return path.startsWith("/") ? path : `/${path}`;
 }
@@ -47,7 +43,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 }
 
 /* =========================
-   Core fetch (JSON by default)
+   Core fetch (JSON)
    ========================= */
 export async function api<T = unknown>(
   path: string,
@@ -98,12 +94,9 @@ export async function api<T = unknown>(
 }
 
 /* =========================
-   Optional: raw fetch helper (non-JSON)
+   Raw fetch helper
    ========================= */
-async function apiRaw(
-  path: string,
-  init: RequestInit = {}
-): Promise<Response> {
+async function apiRaw(path: string, init: RequestInit = {}): Promise<Response> {
   if (!BASE_URL) {
     throw new Error("VITE_API_URL is not set. Add it to your .env and redeploy.");
   }
@@ -125,16 +118,14 @@ async function apiRaw(
     try {
       const maybeJson = await res.clone().json();
       if (maybeJson?.error) message = maybeJson.error;
-    } catch {
-      // ignore json parse error; keep default message
-    }
+    } catch {}
     throw new ApiError(message, res.status);
   }
   return res;
 }
 
 /* =========================
-   Auth (optional backend JWT)
+   Auth
    ========================= */
 export type SafeUser = { id: string | number; name: string; email: string };
 
@@ -142,10 +133,7 @@ export async function loginRequest(
   email: string,
   password: string
 ): Promise<{ token: string; user: SafeUser }> {
-  return api("/api/auth/login", {
-    method: "POST",
-    body: { email, password },
-  });
+  return api("/api/auth/login", { method: "POST", body: { email, password } });
 }
 
 export async function registerRequest(
@@ -163,7 +151,7 @@ export async function registerRequest(
    Projects
    ========================= */
 export interface Project {
-  id: string;
+  id: number; // numeric
   name: string;
   description?: string | null;
   location?: string | null;
@@ -191,24 +179,22 @@ export async function createProject(input: {
 /* =========================
    Sprint 2: Estimation Core
    ========================= */
-
-/** ---- Types (align with backend Prisma/API) ---- */
 export interface AssemblyItem {
   id: string;
   assemblyId: string;
   name: string;
-  unit: string;             // e.g., "pallet", "ton", "hr"
-  unitCost: number;         // numeric
-  qtyFormula: string;       // e.g., "area/100"
+  unit: string;
+  unitCost: number;
+  qtyFormula: string;
 }
 
 export interface Assembly {
   id: string;
   slug: string;
   name: string;
-  trade: string;            // e.g., "Hardscape"
-  unit: string;             // e.g., "sqft"
-  wastePct: number;         // 0.07 for 7%
+  trade: string;
+  unit: string;
+  wastePct: number;
   items: AssemblyItem[];
   createdAt: string;
   updatedAt: string;
@@ -252,17 +238,16 @@ export interface EstimateLine {
 
 export interface Estimate {
   id: string;
-  projectId: string;
+  projectId: number;
   subtotal: number;
   tax: number;
   total: number;
-  location?: Record<string, unknown> | null; // { zip, state, ... }
+  location?: Record<string, unknown> | null;
   lines: EstimateLine[];
   createdAt: string;
   updatedAt: string;
 }
 
-/** ---- Assemblies / Templates ---- */
 export async function listAssemblies(): Promise<Assembly[]> {
   return api<Assembly[]>("/api/assemblies");
 }
@@ -271,55 +256,43 @@ export async function listTemplates(): Promise<Template[]> {
   return api<Template[]>("/api/assemblies/templates");
 }
 
-/** ---- Estimates ---- */
 export async function createEstimate(payload: {
-  projectId: string;
+  projectId: number;
   location?: Record<string, unknown>;
   lines: Array<{ assemblyId: string; inputs: Record<string, number> }>;
 }): Promise<Estimate> {
-  return api<Estimate>("/api/estimates", {
-    method: "POST",
-    body: payload,
-  });
+  return api<Estimate>("/api/estimates", { method: "POST", body: payload });
 }
 
 export async function getEstimate(estimateId: string): Promise<Estimate> {
   return api<Estimate>(`/api/estimates/${encodeURIComponent(estimateId)}`);
 }
 
-export async function listEstimates(projectId: string): Promise<Estimate[]> {
-  return api<Estimate[]>(
-    `/api/projects/${encodeURIComponent(projectId)}/estimates`
-  );
+export async function listEstimates(projectId: number): Promise<Estimate[]> {
+  return api<Estimate[]>(`/api/projects/${projectId}/estimates`);
 }
 
-/** Finalize an estimate & (on backend) create budget snapshot */
 export async function finalizeEstimate(estimateId: string): Promise<void> {
   await api(`/api/estimates/${encodeURIComponent(estimateId)}/finalize`, {
     method: "POST",
   });
 }
 
-/** ---- Proposal PDF helpers ---- */
 export function getProposalPdfUrl(estimateId: string): string {
   if (!BASE_URL) throw new Error("VITE_API_URL is not set.");
   return `${BASE_URL}/api/proposals/${encodeURIComponent(estimateId)}.pdf`;
 }
 
-export async function downloadProposalPdf(
-  estimateId: string
-): Promise<Blob> {
-  const res = await apiRaw(
-    `/api/proposals/${encodeURIComponent(estimateId)}.pdf`,
-    { method: "GET" }
-  );
+export async function downloadProposalPdf(estimateId: string): Promise<Blob> {
+  const res = await apiRaw(`/api/proposals/${encodeURIComponent(estimateId)}.pdf`, {
+    method: "GET",
+  });
   return res.blob();
 }
 
 /* =========================
-   Sprint 4: Expense Tracking
+   Sprint 4–5: Expense Tracking
    ========================= */
-
 export type ExpenseCategory =
   | "MATERIAL"
   | "LABOR"
@@ -329,7 +302,7 @@ export type ExpenseCategory =
 
 export interface Expense {
   id: string;
-  projectId: string;
+  projectId: number;
   estimateId?: string | null;
   estimateLineId?: string | null;
   category: ExpenseCategory;
@@ -337,7 +310,7 @@ export interface Expense {
   description?: string | null;
   amount: number;
   currency: string;
-  date: string;         // ISO string
+  date: string;
   receiptUrl?: string | null;
   meta?: Record<string, unknown> | null;
   createdById?: string | null;
@@ -355,31 +328,17 @@ export interface BudgetReport {
   totalRemaining: number;
 }
 
-/** =========================
- *  Project-by-ID helpers (existing)
- *  ========================= */
-
-/** Get real-time budget vs actual for a project (by ID) */
-export async function getBudgetReport(
-  projectId: string
-): Promise<BudgetReport> {
-  return api<BudgetReport>(
-    `/api/reports/budget?projectId=${encodeURIComponent(projectId)}`
-  );
+/** ---- Project-by-ID helpers ---- */
+export async function getBudgetReport(projectId: number): Promise<BudgetReport> {
+  return api<BudgetReport>(`/api/reports/budget?projectId=${projectId}`);
 }
 
-/** List expenses for a project (by ID) */
-export async function listExpenses(
-  projectId: string
-): Promise<Expense[]> {
-  return api<Expense[]>(
-    `/api/expenses?projectId=${encodeURIComponent(projectId)}`
-  );
+export async function listExpenses(projectId: number): Promise<Expense[]> {
+  return api<Expense[]>(`/api/expenses?projectId=${projectId}`);
 }
 
-/** Create a manual expense entry (by ID) */
 export async function createExpense(input: {
-  projectId: string;
+  projectId: number;
   estimateId?: string;
   estimateLineId?: string;
   category: ExpenseCategory | string;
@@ -387,62 +346,13 @@ export async function createExpense(input: {
   description?: string;
   amount: number;
   currency?: string;
-  date: string; // YYYY-MM-DD or ISO
+  date: string;
   receiptUrl?: string;
   meta?: Record<string, unknown>;
 }): Promise<Expense> {
   return api<Expense>("/api/expenses", {
     method: "POST",
-    body: {
-      ...input,
-      currency: input.currency || "USD",
-    },
-  });
-}
-
-/** =========================
- *  NEW: Project-by-SLUG helpers (slug-friendly backend)
- *  Use these to avoid 400s when your backend resolves slug→id.
- *  ========================= */
-
-/** Get real-time budget vs actual for a project (by SLUG) */
-export async function getBudgetReportBySlug(
-  projectSlug: string
-): Promise<BudgetReport> {
-  return api<BudgetReport>(
-    `/api/reports/budget?projectSlug=${encodeURIComponent(projectSlug)}`
-  );
-}
-
-/** List expenses for a project (by SLUG) */
-export async function listExpensesBySlug(
-  projectSlug: string
-): Promise<Expense[]> {
-  return api<Expense[]>(
-    `/api/expenses?projectSlug=${encodeURIComponent(projectSlug)}`
-  );
-}
-
-/** Create a manual expense entry (by SLUG) */
-export async function createExpenseBySlug(input: {
-  projectSlug: string;
-  estimateId?: string;
-  estimateLineId?: string;
-  category: ExpenseCategory | string;
-  vendor?: string;
-  description?: string;
-  amount: number;
-  currency?: string;
-  date: string; // YYYY-MM-DD or ISO
-  receiptUrl?: string;
-  meta?: Record<string, unknown>;
-}): Promise<Expense> {
-  return api<Expense>("/api/expenses", {
-    method: "POST",
-    body: {
-      ...input,
-      currency: input.currency || "USD",
-    },
+    body: { ...input, currency: input.currency || "USD" },
   });
 }
 

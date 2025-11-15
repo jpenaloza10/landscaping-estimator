@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { API } from "../lib/api"; // base URL only
 import ReceiptUpload from "../components/ReceiptUpload";
 
-const PROJECT_SLUG = "demo-project"; // use your real project slug
+// ✅ use a numeric project ID instead of slug
+const PROJECT_ID = Number(import.meta.env.VITE_DEFAULT_PROJECT_ID ?? 1);
 
-const CATEGORIES = ["MATERIAL","LABOR","EQUIPMENT","SUBCONTRACTOR","OTHER"] as const;
+const CATEGORIES = ["MATERIAL", "LABOR", "EQUIPMENT", "SUBCONTRACTOR", "OTHER"] as const;
 
 type BudgetReport = {
   hasBaseline: boolean;
@@ -24,25 +25,25 @@ export default function ExpensesPage() {
     vendor: "",
     description: "",
     amount: "",
-    date: new Date().toISOString().slice(0,10)
+    date: new Date().toISOString().slice(0, 10),
   });
   const [loading, setLoading] = useState(true);
 
-  // --- Local fetchers that pass projectSlug (avoids api.ts changes) ---
-  async function fetchBudgetReportBySlug(slug: string): Promise<BudgetReport> {
-    const res = await fetch(`${API}/api/reports/budget?projectSlug=${encodeURIComponent(slug)}`);
+  // --- Updated local fetchers that use projectId ---
+  async function fetchBudgetReport(projectId: number): Promise<BudgetReport> {
+    const res = await fetch(`${API}/api/reports/budget?projectId=${projectId}`);
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   }
 
-  async function fetchExpensesBySlug(slug: string) {
-    const res = await fetch(`${API}/api/expenses?projectSlug=${encodeURIComponent(slug)}`);
+  async function fetchExpenses(projectId: number) {
+    const res = await fetch(`${API}/api/expenses?projectId=${projectId}`);
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   }
 
-  async function createExpenseBySlug(payload: {
-    projectSlug: string;
+  async function createExpense(payload: {
+    projectId: number;
     category: string;
     vendor?: string;
     description?: string;
@@ -52,19 +53,19 @@ export default function ExpensesPage() {
     const res = await fetch(`${API}/api/expenses`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   }
-  // -------------------------------------------------------------------
+  // --------------------------------------------------
 
   async function refresh() {
     setLoading(true);
     try {
       const [r, e] = await Promise.all([
-        fetchBudgetReportBySlug(PROJECT_SLUG),
-        fetchExpensesBySlug(PROJECT_SLUG)
+        fetchBudgetReport(PROJECT_ID),
+        fetchExpenses(PROJECT_ID),
       ]);
       setReport(r);
       setExpenses(e);
@@ -73,19 +74,21 @@ export default function ExpensesPage() {
     }
   }
 
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    void refresh();
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await createExpenseBySlug({
-      projectSlug: PROJECT_SLUG,
+    await createExpense({
+      projectId: PROJECT_ID,
       category: form.category,
       vendor: form.vendor || undefined,
       description: form.description || undefined,
       amount: Number(form.amount),
-      date: form.date
+      date: form.date,
     });
-    setForm(f => ({ ...f, vendor: "", description: "", amount: "" }));
+    setForm((f) => ({ ...f, vendor: "", description: "", amount: "" }));
     await refresh();
   }
 
@@ -106,13 +109,13 @@ export default function ExpensesPage() {
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-semibold">Exports</span>
           <a
-            href={`${API}/api/export/expenses.csv?projectSlug=${encodeURIComponent(PROJECT_SLUG)}`}
+            href={`${API}/api/export/expenses.csv?projectId=${PROJECT_ID}`}
             className="text-xs underline text-blue-600 hover:text-blue-800"
           >
             Download Expenses CSV
           </a>
           <a
-            href={`${API}/api/export/budget.csv?projectSlug=${encodeURIComponent(PROJECT_SLUG)}`}
+            href={`${API}/api/export/budget.csv?projectId=${PROJECT_ID}`}
             className="text-xs underline text-blue-600 hover:text-blue-800"
           >
             Download Budget CSV
@@ -136,7 +139,7 @@ export default function ExpensesPage() {
               </strong>
             </p>
             <div className="grid gap-2 text-xs">
-              {CATEGORIES.map(cat => {
+              {CATEGORIES.map((cat) => {
                 const b = report.byCategory?.[cat] || 0;
                 const a = report.actualByCategory?.[cat] || 0;
                 const rem = report.remainingByCategory?.[cat] || 0;
@@ -164,25 +167,20 @@ export default function ExpensesPage() {
 
       {/* Right: Receipt upload + Expense entry + list */}
       <section className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-4">
-        {/* We keep prop name "projectId" for compatibility with your component. Passing the slug string is fine if your backend resolves it. */}
-        <ReceiptUpload
-          projectId={PROJECT_SLUG}
-          onCreated={refresh}
-        />
+        <ReceiptUpload projectId={PROJECT_ID} onCreated={refresh} />
 
         {/* Manual expense form */}
-        <form
-          onSubmit={onSubmit}
-          className="grid gap-2 sm:grid-cols-5 items-end text-xs"
-        >
+        <form onSubmit={onSubmit} className="grid gap-2 sm:grid-cols-5 items-end text-xs">
           <div className="sm:col-span-1">
             <label className="block mb-1 font-medium">Category</label>
             <select
               className="w-full border rounded p-2"
               value={form.category}
-              onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
             >
-              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              {CATEGORIES.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
             </select>
           </div>
           <div className="sm:col-span-1">
@@ -190,7 +188,7 @@ export default function ExpensesPage() {
             <input
               className="w-full border rounded p-2"
               value={form.vendor}
-              onChange={e => setForm(f => ({ ...f, vendor: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
             />
           </div>
           <div className="sm:col-span-1">
@@ -200,7 +198,7 @@ export default function ExpensesPage() {
               step="0.01"
               className="w-full border rounded p-2"
               value={form.amount}
-              onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
               required
             />
           </div>
@@ -210,7 +208,7 @@ export default function ExpensesPage() {
               type="date"
               className="w-full border rounded p-2"
               value={form.date}
-              onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
               required
             />
           </div>
@@ -227,7 +225,7 @@ export default function ExpensesPage() {
             <input
               className="w-full border rounded p-2"
               value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             />
           </div>
         </form>
@@ -236,12 +234,10 @@ export default function ExpensesPage() {
         <div className="border-t pt-3 flex-1 overflow-auto">
           <h3 className="font-semibold text-sm mb-2">Expenses</h3>
           <div className="space-y-1 text-xs">
-            {expenses.map(exp => (
+            {expenses.map((exp) => (
               <div key={exp.id} className="flex justify-between gap-2 border-b pb-1">
                 <div className="flex flex-col">
-                  <span className="font-medium">
-                    {exp.vendor || exp.category}
-                  </span>
+                  <span className="font-medium">{exp.vendor || exp.category}</span>
                   <span className="text-slate-500">
                     {exp.description || "No description"}
                   </span>
@@ -249,7 +245,7 @@ export default function ExpensesPage() {
                 <div className="text-right">
                   <div>${Number(exp.amount).toFixed(2)}</div>
                   <div className="text-slate-500 flex items-center justify-end gap-2">
-                    {exp.category} • {String(exp.date).slice(0,10)}
+                    {exp.category} • {String(exp.date).slice(0, 10)}
                     {/* ✅ AI Categorize button */}
                     <button
                       onClick={() => handleAICategorize(exp.id)}

@@ -3,37 +3,67 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 /**
- * Resolve a project ID given either projectId or projectSlug.
- * Works even if 'slug' is NOT marked @unique in Prisma.
- * Falls back gracefully if only slug is provided.
+ * Strictly parse a value into an integer.
+ * Throws a 400-style error if invalid.
+ */
+function toIntStrict(value: unknown, fieldName: string): number {
+  const n = Number(value);
+  if (!Number.isInteger(n)) {
+    const err: any = new Error(`${fieldName} must be an integer`);
+    err.status = 400;
+    throw err;
+  }
+  return n;
+}
+
+/**
+ * Resolve and validate a project by numeric ID.
+ * - Accepts string or number
+ * - Ensures it's a valid integer
+ * - Confirms the project exists
+ * Returns the numeric projectId.
  */
 export async function resolveProjectId(input: {
-  projectId?: string | null;
-  projectSlug?: string | null;
-}): Promise<string> {
-  const { projectId, projectSlug } = input;
+  projectId?: string | number | null;
+}): Promise<number> {
+  const { projectId } = input;
 
-  // Prefer direct projectId if provided
-  if (projectId && String(projectId).trim()) {
-    return String(projectId).trim();
+  if (projectId === null || projectId === undefined || String(projectId).trim() === "") {
+    const err: any = new Error("projectId is required");
+    err.status = 400;
+    throw err;
   }
 
-  // Resolve by slug (safe even if not unique)
-  if (projectSlug && String(projectSlug).trim()) {
-    const slugValue = String(projectSlug).trim();
+  const id = toIntStrict(projectId, "projectId");
 
-    // Use findFirst instead of findUnique (avoids TS2353 error if slug not @unique)
-    const project = await prisma.project.findFirst({
-      where: { slug: slugValue },
-      select: { id: true },
-    });
+  // Confirm existence (prevents downstream 500s on foreign keys)
+  const exists = await prisma.project.findUnique({
+    where: { id },
+    select: { id: true },
+  });
 
-    if (!project) {
-      throw new Error(`Project not found for slug: ${slugValue}`);
-    }
-
-    return project.id;
+  if (!exists) {
+    const err: any = new Error(`Project not found for id: ${id}`);
+    err.status = 404;
+    throw err;
   }
 
-  throw new Error("projectId or projectSlug is required");
+  return id;
+}
+
+/**
+ * Optional helper if some callers need the full Project record.
+ */
+export async function resolveProject(input: {
+  projectId?: string | number | null;
+}) {
+  const id = await resolveProjectId(input);
+  const project = await prisma.project.findUnique({ where: { id } });
+  // project is guaranteed by resolveProjectId, but keep a guard:
+  if (!project) {
+    const err: any = new Error(`Project not found for id: ${id}`);
+    err.status = 404;
+    throw err;
+  }
+  return project;
 }

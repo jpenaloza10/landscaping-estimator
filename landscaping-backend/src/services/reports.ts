@@ -4,9 +4,71 @@ const prisma = new PrismaClient();
 
 type CategoryTotals = Record<ExpenseCategory, number>;
 
-export async function getProjectBudgetReport(projectId: number) {
+type BudgetReport =
+  | {
+      hasBaseline: false;
+      baselineTotal: 0;
+      byCategory: Record<string, never>;
+      actualByCategory: Record<string, never>;
+      remainingByCategory: Record<string, never>;
+      totalActual: 0;
+      totalRemaining: 0;
+    }
+  | {
+      hasBaseline: true;
+      baselineTotal: number;
+      byCategory: CategoryTotals;
+      actualByCategory: CategoryTotals;
+      remainingByCategory: CategoryTotals;
+      totalActual: number;
+      totalRemaining: number;
+    };
+
+// Keep a canonical list of categories for consistent iteration
+const CATS: ExpenseCategory[] = [
+  "MATERIAL",
+  "LABOR",
+  "EQUIPMENT",
+  "SUBCONTRACTOR",
+  "OTHER",
+];
+
+/**
+ * Normalize any incoming snapshot.byCategory JSON into a strongly-typed CategoryTotals,
+ * coercing numeric-like values safely and defaulting missing categories to 0.
+ */
+function normalizeCategoryTotals(input: unknown): CategoryTotals {
+  const base: Partial<CategoryTotals> =
+    (typeof input === "object" && input !== null ? input : {}) as Partial<CategoryTotals>;
+
+  const out: CategoryTotals = {
+    MATERIAL: 0,
+    LABOR: 0,
+    EQUIPMENT: 0,
+    SUBCONTRACTOR: 0,
+    OTHER: 0,
+  };
+
+  for (const cat of CATS) {
+    const raw = (base as any)[cat];
+    const n = Number(raw);
+    out[cat] = Number.isFinite(n) ? n : 0;
+  }
+  return out;
+}
+
+/**
+ * Returns the project budget report with:
+ * - Baseline (from latest BudgetSnapshot) + approved Change Orders
+ * - Actuals by category (from Expense)
+ * - Remaining by category and totals
+ *
+ * NOTE: projectId is a number (Prisma Project.id is Int).
+ */
+export async function getProjectBudgetReport(projectId: number): Promise<BudgetReport> {
+  // Latest snapshot becomes our baseline-by-category
   const snapshot = await prisma.budgetSnapshot.findFirst({
-    where: { projectId },
+    where: { projectId }, // number, not string
     orderBy: { createdAt: "desc" },
   });
 
@@ -22,18 +84,17 @@ export async function getProjectBudgetReport(projectId: number) {
     };
   }
 
-  const baseline = snapshot.byCategory as CategoryTotals;
+  // Normalize snapshot.byCategory (it’s JSON in DB)
+  const baseline: CategoryTotals = normalizeCategoryTotals(snapshot.byCategory);
 
-  // --- ✅ Include approved Change Orders in the baseline total ---
+  // --- Include APPROVED change orders in the baseline total ---
   const approvedCOs = await prisma.changeOrder.findMany({
     where: { projectId, status: "APPROVED" },
+    select: { amount: true },
   });
-  const changeOrderTotal = approvedCOs.reduce(
-    (sum, co) => sum + Number(co.amount || 0),
-    0
-  );
-  // ---------------------------------------------------------------
+  const changeOrderTotal = approvedCOs.reduce((sum, co) => sum + Number(co.amount ?? 0), 0);
 
+  // Group actual expenses by category
   const grouped = await prisma.expense.groupBy({
     by: ["category"],
     where: { projectId },
@@ -48,10 +109,14 @@ export async function getProjectBudgetReport(projectId: number) {
     OTHER: 0,
   };
 
-  grouped.forEach((row) => {
+  for (const row of grouped) {
     const cat = row.category as ExpenseCategory;
-    actualByCategory[cat] = Number(row._sum.amount || 0);
-  });
+    const val = Number(row._sum.amount ?? 0);
+    // Guard against unexpected category values
+    if ((CATS as string[]).includes(cat)) {
+      actualByCategory[cat] = val;
+    }
+  }
 
   const remainingByCategory: CategoryTotals = {
     MATERIAL: 0,
@@ -61,21 +126,17 @@ export async function getProjectBudgetReport(projectId: number) {
     OTHER: 0,
   };
 
-  (Object.keys(remainingByCategory) as ExpenseCategory[]).forEach((cat) => {
-    const b = baseline[cat] || 0;
-    const a = actualByCategory[cat] || 0;
+  for (const cat of CATS) {
+    const b = baseline[cat] ?? 0;
+    const a = actualByCategory[cat] ?? 0;
     remainingByCategory[cat] = b - a;
-  });
+  }
 
-  // Baseline now includes approved change orders
+  // Baseline total includes approved change orders
   const baselineTotal =
-    Object.values(baseline).reduce((sum, val) => sum + val, 0) + changeOrderTotal;
+    CATS.reduce((sum, cat) => sum + (baseline[cat] ?? 0), 0) + changeOrderTotal;
 
-  const totalActual = Object.values(actualByCategory).reduce(
-    (sum, val) => sum + val,
-    0
-  );
-
+  const totalActual = CATS.reduce((sum, cat) => sum + (actualByCategory[cat] ?? 0), 0);
   const totalRemaining = baselineTotal - totalActual;
 
   return {
