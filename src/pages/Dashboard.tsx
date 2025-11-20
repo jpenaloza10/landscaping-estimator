@@ -37,9 +37,7 @@ export default function Dashboard() {
         setProjects(projectList || []);
         setSummary(dashSummary);
       } catch (e: any) {
-        // If something fails, try to give a specific error when possible
         const msg = e?.message || "Failed to load dashboard data";
-        // We don't know which one failed, so set both error states if needed
         setProjectsErr(msg);
         setSummaryErr(msg);
       } finally {
@@ -49,7 +47,7 @@ export default function Dashboard() {
     })();
   }, []);
 
-  // Compute budget snapshot values
+  // Compute budget snapshot values (fall back to 0s if summary missing)
   const estimated = summary?.contractValue ?? 0;
   const actual = summary?.totalExpenses ?? 0;
   const remaining = estimated - actual;
@@ -163,7 +161,7 @@ export default function Dashboard() {
     </div>
   );
 
-  // 4) Budget snapshot – now wired to live backend summary
+  // 4) Budget snapshot – safe null checks for summary
   const BudgetSnapshotCard = (
     <div className="rounded-2xl bg-white p-4 shadow-sm">
       <h2 className="mb-3 text-base font-semibold">Budget Snapshot</h2>
@@ -171,11 +169,18 @@ export default function Dashboard() {
       {loadingSummary && (
         <p className="text-sm text-gray-600">Loading budget snapshot…</p>
       )}
-      {summaryErr && (
+
+      {!loadingSummary && summaryErr && (
         <p className="text-sm text-red-600">{summaryErr}</p>
       )}
 
-      {!loadingSummary && !summaryErr && (
+      {!loadingSummary && !summaryErr && summary == null && (
+        <p className="text-sm text-gray-600">
+          No financial data yet — create estimates and log expenses.
+        </p>
+      )}
+
+      {!loadingSummary && !summaryErr && summary && (
         <>
           <p className="text-xs text-gray-600 mb-2">
             Contract = estimates + approved change orders across all projects.
@@ -218,12 +223,6 @@ export default function Dashboard() {
             </div>
           </div>
         </>
-      )}
-
-      {!loadingSummary && !summaryErr && summary == null && (
-        <p className="text-sm text-gray-600">
-          No financial data yet — create estimates and log expenses.
-        </p>
       )}
     </div>
   );
