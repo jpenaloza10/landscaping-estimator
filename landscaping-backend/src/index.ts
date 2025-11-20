@@ -12,6 +12,7 @@ import expenseAIRouter from "./routes/expenseAI";
 import changeOrdersRouter from "./routes/changeOrders";
 import exportRouter from "./routes/export";
 import aiRouter from "./routes/ai";
+import dashboardRouter from "./routes/dashboard";
 import { prisma } from "./prisma";
 import { SafeUser } from "./types/user";
 import { geocode } from "./geocode";
@@ -112,6 +113,8 @@ app.use("/api/change-orders", changeOrdersRouter);
 app.use("/api/export", exportRouter);
 
 app.use("/api/ai", aiRouter);
+
+app.use("/api/dashboard", dashboardRouter);
 
 app.get("/api/assemblies/ping", (_req, res) => {
   res.json({ ok: true, when: new Date().toISOString() });

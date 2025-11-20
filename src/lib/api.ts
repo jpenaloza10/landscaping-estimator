@@ -177,6 +177,42 @@ export async function createProject(input: {
 }
 
 /* =========================
+   Dashboard / Reporting
+   ========================= */
+export interface DashboardSummary {
+  totalProjects: number;
+  totalEstimates: number;
+  totalEstimateValue: number;
+  totalExpenses: number;
+  totalApprovedChangeOrders: number;
+  contractValue: number;
+  grossProfit: number;
+}
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  return api<DashboardSummary>("/api/dashboard/summary");
+}
+
+export interface DashboardProjectFinancial {
+  id: number;
+  name: string;
+  city: string | null;
+  state: string | null;
+  created_at: string;
+  estimatesTotal: number;
+  expensesTotal: number;
+  approvedChangeOrdersTotal: number;
+  contractValue: number;
+  grossProfit: number;
+}
+
+export async function getDashboardProjectsFinancial(): Promise<{
+  projects: DashboardProjectFinancial[];
+}> {
+  return api<{ projects: DashboardProjectFinancial[] }>("/api/dashboard/projects");
+}
+
+/* =========================
    Sprint 2: Estimation Core
    ========================= */
 export interface AssemblyItem {
