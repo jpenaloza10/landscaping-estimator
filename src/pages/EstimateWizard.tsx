@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { createEstimate, listAssemblies } from "../lib/api";
 import DownloadPdfButton from "../components/DownloadPdfButton";
 
+// 👉 NEW: AI Assistant Panel
+import AiAssistantPanel from "../components/AiAssistantPanel";
+import { useAuth } from "../hooks/useAuth"; // or wherever your token is stored
+
 type AssemblyItem = {
   id: string;
   name: string;
@@ -45,7 +49,7 @@ type Estimate = {
   location?: any;
 };
 
-// ✅ Numeric project ID for Option A
+// Numeric project ID for Option A
 const PROJECT_ID = Number(import.meta.env.VITE_DEFAULT_PROJECT_ID ?? 1);
 
 export default function EstimateWizard() {
@@ -59,6 +63,9 @@ export default function EstimateWizard() {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
+
+  // 👉 NEW: authenticated user token
+  const { token } = useAuth();
 
   // Load assemblies on mount
   useEffect(() => {
@@ -76,13 +83,11 @@ export default function EstimateWizard() {
     setState(v.toUpperCase());
   }
 
-  // Selected assembly (for helper UI)
   const selectedAssembly = useMemo(
     () => assemblies.find((a) => a.id === assemblyId),
     [assemblies, assemblyId]
   );
 
-  // Basic validation
   const canCreate =
     !loading &&
     !!assemblyId &&
@@ -97,7 +102,6 @@ export default function EstimateWizard() {
     setError("");
     setEstimate(null);
     try {
-      // ✅ Pass numeric projectId
       const est = (await createEstimate({
         projectId: PROJECT_ID,
         location: { zip, state },
@@ -108,10 +112,8 @@ export default function EstimateWizard() {
         throw new Error("Estimate was created but no id was returned.");
       }
 
-      // Store locally so the inline result block can still render if desired
       setEstimate(est);
 
-      // Auto-navigate to the PDF viewer route for a clean proposal experience
       navigate(`/proposals/${est.id}`);
     } catch (e: any) {
       setError(e?.message || "Failed to create estimate");
@@ -199,6 +201,16 @@ export default function EstimateWizard() {
 
       {estimate && (
         <div className="rounded-2xl bg-white p-4 shadow-sm">
+
+          {/* ------------------------------- */}
+          {/* 🔥 NEW: AI Assistant Panel     */}
+          {/* ------------------------------- */}
+          {token && (
+            <div className="mb-6">
+              <AiAssistantPanel estimateId={estimate.id} token={token} />
+            </div>
+          )}
+
           <h3 className="font-medium mb-2">Result</h3>
           <div className="text-sm">
             <div>
@@ -212,7 +224,6 @@ export default function EstimateWizard() {
             </div>
           </div>
 
-          {/* Optional transparency: show calculated line items */}
           {!!estimate.lines?.length && (
             <div className="mt-4">
               <h4 className="font-medium mb-2 text-sm">Line Items</h4>
@@ -241,7 +252,6 @@ export default function EstimateWizard() {
             </div>
           )}
 
-          {/* Download/Open PDF */}
           <div className="mt-3 flex items-center gap-3">
             <a
               className="inline-block underline text-sm"
