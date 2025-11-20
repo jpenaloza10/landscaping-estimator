@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { createEstimate, listAssemblies } from "../lib/api";
 import DownloadPdfButton from "../components/DownloadPdfButton";
 
-// 👉 NEW: AI Assistant Panel
+// 🔥 AI Assistant Panel (Sprint 6)
 import AiAssistantPanel from "../components/AiAssistantPanel";
-import { useAuth } from "../hooks/useAuth"; // or wherever your token is stored
+import { useAuth } from "../hooks/useAuth";
 
 type AssemblyItem = {
   id: string;
@@ -49,7 +49,7 @@ type Estimate = {
   location?: any;
 };
 
-// Numeric project ID for Option A
+// Numeric project ID for backend (matches prisma Project.id: Int)
 const PROJECT_ID = Number(import.meta.env.VITE_DEFAULT_PROJECT_ID ?? 1);
 
 export default function EstimateWizard() {
@@ -64,7 +64,7 @@ export default function EstimateWizard() {
 
   const navigate = useNavigate();
 
-  // 👉 NEW: authenticated user token
+  // Auth token for AI routes
   const { token } = useAuth();
 
   // Load assemblies on mount
@@ -101,9 +101,10 @@ export default function EstimateWizard() {
     setLoading(true);
     setError("");
     setEstimate(null);
+
     try {
       const est = (await createEstimate({
-        projectId: PROJECT_ID,
+        projectId: PROJECT_ID, // number, matches backend schema
         location: { zip, state },
         lines: [{ assemblyId, inputs: { area } }],
       })) as Estimate;
@@ -114,6 +115,7 @@ export default function EstimateWizard() {
 
       setEstimate(est);
 
+      // Navigate to proposal page; AI panel still visible on this screen
       navigate(`/proposals/${est.id}`);
     } catch (e: any) {
       setError(e?.message || "Failed to create estimate");
@@ -124,6 +126,7 @@ export default function EstimateWizard() {
 
   return (
     <div className="grid gap-4">
+      {/* Wizard input card */}
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <h2 className="font-semibold mb-3">Estimate Wizard</h2>
 
@@ -146,7 +149,9 @@ export default function EstimateWizard() {
               <div className="mt-1 text-xs text-slate-500">
                 Items: {selectedAssembly.items?.length ?? 0}
                 {typeof selectedAssembly.wastePct === "number"
-                  ? ` • Waste: ${Math.round(selectedAssembly.wastePct * 100)}%`
+                  ? ` • Waste: ${Math.round(
+                      (selectedAssembly.wastePct || 0) * 100
+                    )}%`
                   : ""}
                 {selectedAssembly.unit ? ` • Unit: ${selectedAssembly.unit}` : ""}
               </div>
@@ -199,12 +204,10 @@ export default function EstimateWizard() {
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       </div>
 
+      {/* Result + AI Assistant */}
       {estimate && (
         <div className="rounded-2xl bg-white p-4 shadow-sm">
-
-          {/* ------------------------------- */}
-          {/* 🔥 NEW: AI Assistant Panel     */}
-          {/* ------------------------------- */}
+          {/* 🔥 AI Assistant Panel */}
           {token && (
             <div className="mb-6">
               <AiAssistantPanel estimateId={estimate.id} token={token} />
@@ -214,13 +217,14 @@ export default function EstimateWizard() {
           <h3 className="font-medium mb-2">Result</h3>
           <div className="text-sm">
             <div>
-              Subtotal: <strong>${Number(estimate.subtotal).toFixed(2)}</strong>
+              Subtotal:{" "}
+              <strong>${Number(estimate.subtotal ?? 0).toFixed(2)}</strong>
             </div>
             <div>
-              Tax: <strong>${Number(estimate.tax).toFixed(2)}</strong>
+              Tax: <strong>${Number(estimate.tax ?? 0).toFixed(2)}</strong>
             </div>
             <div>
-              Total: <strong>${Number(estimate.total).toFixed(2)}</strong>
+              Total: <strong>${Number(estimate.total ?? 0).toFixed(2)}</strong>
             </div>
           </div>
 
@@ -238,13 +242,14 @@ export default function EstimateWizard() {
                       {line.items?.map((it, idx) => (
                         <li key={idx} className="text-slate-600">
                           {it.name}: {it.qty.toFixed(2)} {it.unit} @ $
-                          {it.unitCost.toFixed(2)} = ${it.extended.toFixed(2)}
+                          {it.unitCost.toFixed(2)} = $
+                          {it.extended.toFixed(2)}
                         </li>
                       ))}
                     </ul>
                     <div className="mt-1">
                       Line total:{" "}
-                      <strong>${Number(line.lineTotal).toFixed(2)}</strong>
+                      <strong>${Number(line.lineTotal ?? 0).toFixed(2)}</strong>
                     </div>
                   </li>
                 ))}
@@ -255,7 +260,9 @@ export default function EstimateWizard() {
           <div className="mt-3 flex items-center gap-3">
             <a
               className="inline-block underline text-sm"
-              href={`${import.meta.env.VITE_API_BASE_URL}/api/proposals/${estimate.id}.pdf`}
+              href={`${
+                import.meta.env.VITE_API_BASE_URL
+              }/api/proposals/${estimate.id}.pdf`}
               target="_blank"
               rel="noreferrer"
             >
