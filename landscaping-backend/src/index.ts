@@ -213,15 +213,15 @@ app.get("/api/auth/me", authMiddleware, async (req: Request, res: Response) => {
 
 /* ------------------------------- PROJECTS ------------------------------- */
 
+/**
+ * Create project
+ * For now, this does NOT rely on backend JWT auth, so it doesn't use req.user.
+ * You can later wire this to Supabase user IDs if you want tighter multi-tenant separation.
+ */
 app.post(
   "/api/projects",
-  authMiddleware,
   async (req: Request<{}, {}, CreateProjectBody>, res: Response) => {
     try {
-      if (req.user?.userId == null) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
       // Validate body (zod)
       const parsed = createProjectSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
@@ -235,9 +235,12 @@ app.post(
       // Geocode (graceful fallback)
       const g = await geocode(location);
 
+      // TEMP: use a default user_id = 1 until you decide how to tie this to Supabase users
+      const DEFAULT_USER_ID = 1;
+
       const project = await prisma.project.create({
         data: {
-          user_id: Number(req.user.userId), // Int
+          user_id: DEFAULT_USER_ID,
           name,
           description,
           location, // raw input
@@ -274,13 +277,14 @@ app.post(
   }
 );
 
-// List Projects for current user
-app.get("/api/projects", authMiddleware, async (req: Request, res: Response) => {
+/**
+ * List projects
+ * Public for now (no backend JWT auth). Returns all projects, newest first.
+ * Later you can filter by a "default" user or a Supabase-linked user_id.
+ */
+app.get("/api/projects", async (_req: Request, res: Response) => {
   try {
-    if (req.user?.userId == null) return res.status(401).json({ error: "Unauthorized" });
-
     const projects = await prisma.project.findMany({
-      where: { user_id: Number(req.user.userId) }, // Int
       select: {
         id: true,
         name: true,
@@ -298,6 +302,7 @@ app.get("/api/projects", authMiddleware, async (req: Request, res: Response) => 
     return res.status(500).json({ error: "Failed to list projects" });
   }
 });
+
 
 /* --------------------------- SUPABASE: UPLOADS -------------------------- */
 

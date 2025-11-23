@@ -2,10 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import LocationAutocomplete from "../components/LocationAutocomplete";
-
-// Prefer env; fall back to your Render URL for local convenience
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL ?? "https://landscaping-backend-sbhw.onrender.com";
+import { createProject } from "../lib/api";
 
 const SCOPE_OPTIONS = [
   "Paver Patio",
@@ -17,7 +14,7 @@ const SCOPE_OPTIONS = [
 ];
 
 export default function ProjectWizard() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const nav = useNavigate();
   const [step, setStep] = useState(1);
 
@@ -44,7 +41,7 @@ export default function ProjectWizard() {
     setErr(null);
     setLoading(true);
     try {
-      if (!token) {
+      if (!user) {
         setErr("You must be logged in before creating a project.");
         return;
       }
@@ -54,24 +51,16 @@ export default function ProjectWizard() {
         notes || "-"
       }`;
 
-      const res = await fetch(`${API_BASE}/api/projects`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ name, description, location }),
+      // Use backend API helper (which attaches Supabase auth automatically)
+      const project = await createProject({
+        name,
+        description,
+        location,
       });
 
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg =
-          (data && (data.error || data.message)) ||
-          `Failed to create project (HTTP ${res.status})`;
-        throw new Error(msg);
-      }
-
+      // Go to projects list or directly into the project
       nav("/projects");
+      // Or, if you prefer: nav(`/projects/${project.id}`);
     } catch (e: any) {
       setErr(e?.message ?? "Something went wrong while creating the project.");
     } finally {

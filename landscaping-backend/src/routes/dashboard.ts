@@ -1,13 +1,13 @@
+// src/routes/dashboard.ts
 import { Router } from "express";
 import { prisma } from "../prisma";
-import { Decimal } from "@prisma/client/runtime/library";
 
 const router = Router();
 
-function dec(n: Decimal | number | null | undefined): number {
+// Simple helper to convert Prisma decimals / numbers / null to JS number
+function toNum(n: any): number {
   if (n == null) return 0;
-  if (n instanceof Decimal) return Number(n);
-  return n;
+  return Number(n);
 }
 
 /**
@@ -21,8 +21,8 @@ function dec(n: Decimal | number | null | undefined): number {
  * - contractValue
  * - grossProfit
  *
- * NOTE: For now this is global across all projects in the DB.
- * If you later want it per-user, you can filter by user_id here.
+ * Currently aggregates across all projects in the database.
+ * (You can later filter by user_id if you want it per-user.)
  */
 router.get("/summary", async (_req, res) => {
   try {
@@ -44,13 +44,16 @@ router.get("/summary", async (_req, res) => {
     for (const p of projects) {
       totalEstimates += p.estimates.length;
       totalEstimateValue += p.estimates.reduce(
-        (s, est) => s + dec(est.total),
+        (s, est) => s + toNum(est.total),
         0
       );
-      totalExpenses += p.expenses.reduce((s, e) => s + dec(e.amount), 0);
+      totalExpenses += p.expenses.reduce(
+        (s, e) => s + toNum(e.amount),
+        0
+      );
       totalApprovedChangeOrders += p.changeOrders
         .filter((co) => co.status === "APPROVED")
-        .reduce((s, co) => s + dec(co.amount), 0);
+        .reduce((s, co) => s + toNum(co.amount), 0);
     }
 
     const contractValue = totalEstimateValue + totalApprovedChangeOrders;
@@ -94,16 +97,16 @@ router.get("/projects", async (_req, res) => {
 
     const rows = projects.map((p) => {
       const estimatesTotal = p.estimates.reduce(
-        (s, est) => s + dec(est.total),
+        (s, est) => s + toNum(est.total),
         0
       );
       const expensesTotal = p.expenses.reduce(
-        (s, e) => s + dec(e.amount),
+        (s, e) => s + toNum(e.amount),
         0
       );
       const approvedChangeOrdersTotal = p.changeOrders
         .filter((co) => co.status === "APPROVED")
-        .reduce((s, co) => s + dec(co.amount), 0);
+        .reduce((s, co) => s + toNum(co.amount), 0);
 
       const contractValue = estimatesTotal + approvedChangeOrdersTotal;
       const grossProfit = contractValue - expensesTotal;
