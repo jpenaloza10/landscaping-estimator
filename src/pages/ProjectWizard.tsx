@@ -1,3 +1,4 @@
+// src/pages/ProjectWizard.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -40,10 +41,11 @@ export default function ProjectWizard() {
   async function submit() {
     setErr(null);
     setLoading(true);
+
     try {
+      // Must be logged in so api.ts can attach a valid Supabase JWT
       if (!user) {
-        setErr("You must be logged in before creating a project.");
-        return;
+        throw new Error("You must be logged in before creating a project.");
       }
 
       // Fold scope + notes into description for now
@@ -58,10 +60,13 @@ export default function ProjectWizard() {
         location,
       });
 
-      // Go to projects list or directly into the project
+      // Navigate after successful creation
+      // Either to list:
       nav("/projects");
-      // Or, if you prefer: nav(`/projects/${project.id}`);
+      // Or, if you prefer:
+      // nav(`/projects/${project.id}`);
     } catch (e: any) {
+      console.error("Project create error:", e);
       setErr(e?.message ?? "Something went wrong while creating the project.");
     } finally {
       setLoading(false);

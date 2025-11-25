@@ -2,7 +2,8 @@ import "dotenv/config";
 import express, { Request, Response } from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
-import projects from "./routes/projects";
+//import projects from "./routes/projects";
+import projectsRouter from "./routes/projects";
 import assembliesRouter from "./routes/assemblies";
 import pricingRouter from "./routes/pricing";
 import expensesRouter from "./routes/expenses";
@@ -94,7 +95,9 @@ app.get("/", (_req, res) => {
   res.type("text/plain").send("Landscaping Estimator API: OK");
 });
 
-app.use("/api/projects", projects);
+//app.use("/api/projects", projects);
+
+app.use("/api/projects", projectsRouter);
 
 app.use("/api/assemblies", assembliesRouter);
 
