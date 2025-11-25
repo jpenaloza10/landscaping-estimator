@@ -1,19 +1,29 @@
 // src/auth/AuthContext.tsx
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabase";
-import type { Session, User } from "@supabase/supabase-js";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  loginRequest,
+  registerRequest,
+  setAuthToken,
+  type SafeUser,
+} from "../lib/api";
 
 export type AuthCtx = {
-  user: User | null;
-  session: Session | null;
+  user: SafeUser | null;
   token: string | null;
   loading: boolean;
 
-  // legacy helpers expected by your pages (kept for compatibility)
-  setAuth: (session: Session | null) => void;
+  // Legacy compatibility (these no longer use Supabase)
+  setAuth: (token: string | null, user: SafeUser | null) => void;
   clearAuth: () => Promise<void>;
 
-  // primary actions (now return structured results)
+  // Primary actions
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (
     email: string,
@@ -25,84 +35,98 @@ export type AuthCtx = {
 const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [token, setTokenState] = useState<string | null>(null);
+  const [user, setUserState] = useState<SafeUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // compute token from session
-  const token = session?.access_token ?? null;
-
+  /* =========================
+     Load saved token on mount
+     ========================= */
   useEffect(() => {
-    let mounted = true;
+    const storedToken = localStorage.getItem("authToken");
+    const storedUser = localStorage.getItem("authUser");
 
-    (async () => {
-      // 1) fetch existing session on mount
-      const { data, error } = await supabase.auth.getSession();
-      if (!mounted) return;
-      if (error) {
-        console.warn("supabase.auth.getSession error:", error.message);
+    if (storedToken) {
+      setTokenState(storedToken);
+      setAuthToken(storedToken);
+    }
+
+    if (storedUser) {
+      try {
+        setUserState(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem("authUser");
       }
-      setSession(data?.session ?? null);
-      setUser(data?.session?.user ?? null);
-      setLoading(false);
-    })();
+    }
 
-    // 2) subscribe to auth state changes
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession ?? null);
-      setUser(newSession?.user ?? null);
-    });
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
+    setLoading(false);
   }, []);
 
-  // legacy helpers (kept)
-  function setAuth(next: Session | null) {
-    setSession(next);
-    setUser(next?.user ?? null);
+  /* =========================
+     Helpers
+     ========================= */
+  function setAuth(nextToken: string | null, nextUser: SafeUser | null) {
+    setTokenState(nextToken);
+    setUserState(nextUser);
+
+    setAuthToken(nextToken);
+
+    if (nextToken) {
+      localStorage.setItem("authToken", nextToken);
+      localStorage.setItem("authUser", JSON.stringify(nextUser));
+    } else {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("authUser");
+    }
   }
 
   async function clearAuth() {
-    await supabase.auth.signOut();
-    setSession(null);
-    setUser(null);
+    setAuth(null, null);
   }
 
-  // main actions (return objects so UI can show messages gracefully)
+  /* =========================
+     Main login
+     ========================= */
   async function signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      return { error: error.message };
+    try {
+      const { token, user } = await loginRequest(email, password);
+
+      setAuth(token, user);
+      return {};
+    } catch (err: any) {
+      return { error: err?.message ?? "Login failed" };
     }
-    // success: session is present
-    setAuth(data.session);
-    return {};
   }
 
+  /* =========================
+     Sign up
+     ========================= */
   async function signUp(email: string, password: string) {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      return { error: error.message };
+    try {
+      const { token, user } = await registerRequest(email, password);
+
+      // If backend returns a token, log them in immediately
+      if (token) setAuth(token, user);
+
+      return { needsConfirm: false };
+    } catch (err: any) {
+      return { error: err?.message ?? "Signup failed" };
     }
-    // If confirm-email is enabled, Supabase returns a user but no session until they confirm.
-    const needsConfirm = !!data?.user && !data?.session;
-    if (data.session) setAuth(data.session);
-    return { needsConfirm };
   }
 
+  /* =========================
+     Logout
+     ========================= */
   async function signOut() {
-    await supabase.auth.signOut();
-    setSession(null);
-    setUser(null);
+    clearAuth();
   }
 
+  /* =========================
+     Context value
+     ========================= */
   const value = useMemo<AuthCtx>(
     () => ({
       user,
-      session,
       token,
       loading,
       setAuth,
@@ -111,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signOut,
     }),
-    [user, session, token, loading]
+    [user, token, loading]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

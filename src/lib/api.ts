@@ -1,5 +1,4 @@
 // src/lib/api.ts
-import { supabase } from "./supabase";
 
 /* =========================
    Base URL
@@ -34,12 +33,25 @@ function normalizePath(path: string): string {
 }
 
 /* =========================
-   Auth header (Supabase)
+   Auth Token Management (Option B)
    ========================= */
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  authToken = token;
+  if (token) {
+    localStorage.setItem("authToken", token);
+  } else {
+    localStorage.removeItem("authToken");
+  }
+}
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession();
-  const token = data?.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  // Lazy load from localStorage if needed
+  if (!authToken) {
+    authToken = localStorage.getItem("authToken");
+  }
+  return authToken ? { Authorization: `Bearer ${authToken}` } : {};
 }
 
 /* =========================
@@ -52,6 +64,7 @@ export async function api<T = unknown>(
   if (!BASE_URL) {
     throw new Error("VITE_API_URL is not set. Add it to your .env and redeploy.");
   }
+
   const url = `${BASE_URL}${normalizePath(path)}`;
   const authHeaders = await getAuthHeaders();
 
@@ -100,6 +113,7 @@ async function apiRaw(path: string, init: RequestInit = {}): Promise<Response> {
   if (!BASE_URL) {
     throw new Error("VITE_API_URL is not set. Add it to your .env and redeploy.");
   }
+
   const url = `${BASE_URL}${normalizePath(path)}`;
   const authHeaders = await getAuthHeaders();
 
@@ -121,6 +135,7 @@ async function apiRaw(path: string, init: RequestInit = {}): Promise<Response> {
     } catch {}
     throw new ApiError(message, res.status);
   }
+
   return res;
 }
 
@@ -151,7 +166,7 @@ export async function registerRequest(
    Projects
    ========================= */
 export interface Project {
-  id: number; // numeric
+  id: number;
   name: string;
   description?: string | null;
   location?: string | null;
@@ -364,7 +379,6 @@ export interface BudgetReport {
   totalRemaining: number;
 }
 
-/** ---- Project-by-ID helpers ---- */
 export async function getBudgetReport(projectId: number): Promise<BudgetReport> {
   return api<BudgetReport>(`/api/reports/budget?projectId=${projectId}`);
 }
