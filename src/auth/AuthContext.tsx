@@ -1,5 +1,6 @@
 // src/auth/AuthContext.tsx
-import React, {
+import React,
+{
   createContext,
   useContext,
   useEffect,
@@ -103,11 +104,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
      ========================= */
   async function signUp(email: string, password: string) {
     try {
-      const { token, user } = await registerRequest(email, password);
+      // Use email prefix as a fallback "name"
+      const nameFromEmail = email.split("@")[0] || email;
+      const { token, user } = await registerRequest(
+        nameFromEmail,
+        email,
+        password
+      );
 
-      // If backend returns a token, log them in immediately
       if (token) setAuth(token, user);
 
+      // No email-confirm flow here (backend could add it later)
       return { needsConfirm: false };
     } catch (err: any) {
       return { error: err?.message ?? "Signup failed" };

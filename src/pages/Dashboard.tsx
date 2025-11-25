@@ -19,12 +19,8 @@ export default function Dashboard() {
   const [summaryErr, setSummaryErr] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
-  // Prefer user.name from metadata, then full_name, then email, then a friendly fallback
-  const displayName =
-    (user?.user_metadata as Record<string, any>)?.name ??
-    (user?.user_metadata as Record<string, any>)?.full_name ??
-    user?.email ??
-    "there";
+  // Prefer user.name, then email, then a friendly fallback
+  const displayName = user?.name ?? user?.email ?? "there";
 
   useEffect(() => {
     (async () => {

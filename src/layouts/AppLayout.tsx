@@ -1,26 +1,21 @@
 // src/layouts/AppLayout.tsx
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthContext";
 
 export default function AppLayout() {
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
-  // Friendly display name for header
-  const displayName =
-    (user?.user_metadata as Record<string, any>)?.name ??
-    (user?.user_metadata as Record<string, any>)?.full_name ??
-    user?.email ??
-    "Account";
+  // Friendly display name for header (SafeUser: { id, name, email })
+  const displayName = user?.name ?? user?.email ?? "Account";
 
   async function handleSignOut() {
     try {
       setSigningOut(true);
-      await supabase.auth.signOut();
+      await signOut();
       navigate("/", { replace: true });
     } finally {
       setSigningOut(false);
@@ -45,18 +40,63 @@ export default function AppLayout() {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-4 text-sm lg:flex">
-            <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/dashboard">Dashboard</NavLink>
-            <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/projects">Projects</NavLink>
-            <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/expenses">Expenses</NavLink>
-            <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/account">Account</NavLink>
-            <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/assemblies">Assemblies</NavLink>
-            <NavLink className={({isActive}) => isActive ? "font-medium underline" : "hover:underline"} to="/estimate">Estimator</NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                isActive ? "font-medium underline" : "hover:underline"
+              }
+              to="/dashboard"
+            >
+              Dashboard
+            </NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                isActive ? "font-medium underline" : "hover:underline"
+              }
+              to="/projects"
+            >
+              Projects
+            </NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                isActive ? "font-medium underline" : "hover:underline"
+              }
+              to="/expenses"
+            >
+              Expenses
+            </NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                isActive ? "font-medium underline" : "hover:underline"
+              }
+              to="/account"
+            >
+              Account
+            </NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                isActive ? "font-medium underline" : "hover:underline"
+              }
+              to="/assemblies"
+            >
+              Assemblies
+            </NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                isActive ? "font-medium underline" : "hover:underline"
+              }
+              to="/estimate"
+            >
+              Estimator
+            </NavLink>
 
             {/* Divider */}
             <span className="mx-2 h-5 w-px bg-slate-200" />
 
             {/* Account + Sign Out */}
-            <span className="max-w-[200px] truncate text-slate-600" title={displayName}>
+            <span
+              className="max-w-[200px] truncate text-slate-600"
+              title={displayName}
+            >
               {displayName}
             </span>
             <button
@@ -74,14 +114,28 @@ export default function AppLayout() {
           <div className="border-t bg-white lg:hidden">
             <div className="mx-auto max-w-7xl px-4 py-3">
               <div className="flex flex-col gap-3">
-                <NavLink to="/dashboard" onClick={() => setOpen(false)}>Dashboard</NavLink>
-                <NavLink to="/projects" onClick={() => setOpen(false)}>Projects</NavLink>
-                <NavLink to="/expenses" onClick={() => setOpen(false)}>Expenses</NavLink>
-                <NavLink to="/account" onClick={() => setOpen(false)}>Account</NavLink>
-                <NavLink to="/assemblies" onClick={() => setOpen(false)}>Assemblies</NavLink>
-                <NavLink to="/estimate" onClick={() => setOpen(false)}>Estimator</NavLink>
+                <NavLink to="/dashboard" onClick={() => setOpen(false)}>
+                  Dashboard
+                </NavLink>
+                <NavLink to="/projects" onClick={() => setOpen(false)}>
+                  Projects
+                </NavLink>
+                <NavLink to="/expenses" onClick={() => setOpen(false)}>
+                  Expenses
+                </NavLink>
+                <NavLink to="/account" onClick={() => setOpen(false)}>
+                  Account
+                </NavLink>
+                <NavLink to="/assemblies" onClick={() => setOpen(false)}>
+                  Assemblies
+                </NavLink>
+                <NavLink to="/estimate" onClick={() => setOpen(false)}>
+                  Estimator
+                </NavLink>
 
-                <div className="mt-2 border-t pt-2 text-sm text-slate-600">{displayName}</div>
+                <div className="mt-2 border-t pt-2 text-sm text-slate-600">
+                  {displayName}
+                </div>
                 <button
                   onClick={async () => {
                     setOpen(false);
