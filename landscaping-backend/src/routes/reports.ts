@@ -2,6 +2,7 @@
 import { Router } from "express";
 import { getProjectBudgetReport } from "../services/reports";
 import { PrismaClient } from "@prisma/client";
+import { auth as authMiddleware } from "../auth";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -17,16 +18,38 @@ function toInt(value: unknown, fieldName: string): number {
   return n;
 }
 
+/** Helper: get current user id from req.user.id */
+function getUserId(req: any): number {
+  const raw = req.user?.id;
+  const n = Number(raw);
+  if (!raw || !Number.isFinite(n)) {
+    const err: any = new Error("Unauthorized");
+    err.status = 401;
+    throw err;
+  }
+  return n;
+}
+
+// All report routes require auth
+router.use(authMiddleware);
+
+/**
+ * GET /api/reports/budget?projectId=123
+ * Returns budget report for a project owned by the current user
+ */
 router.get("/budget", async (req, res) => {
   try {
+    const userId = getUserId(req);
+
     // Require ?projectId=123 (Project.id is Int in Prisma)
     const projectId = toInt(req.query.projectId, "projectId");
 
-    // Optional: ensure project exists; return 404 if not
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
+    // Ensure project exists AND belongs to this user
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, user_id: userId },
       select: { id: true },
     });
+
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { API } from "../lib/api"; // base URL only
 import ReceiptUpload from "../components/ReceiptUpload";
 
-// ✅ use a numeric project ID instead of slug
 const PROJECT_ID = Number(import.meta.env.VITE_DEFAULT_PROJECT_ID ?? 1);
 
 const CATEGORIES = ["MATERIAL", "LABOR", "EQUIPMENT", "SUBCONTRACTOR", "OTHER"] as const;
@@ -92,7 +91,7 @@ export default function ExpensesPage() {
     await refresh();
   }
 
-  // ✅ AI Categorization function
+  // AI Categorization function
   async function handleAICategorize(id: string) {
     try {
       await fetch(`${API}/api/expenses/${id}/auto-categorize`, { method: "POST" });
@@ -104,7 +103,7 @@ export default function ExpensesPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[2fr,3fr]">
-      {/* ✅ Export toolbar (full width) */}
+      {/* Export toolbar (full width) */}
       <div className="bg-white rounded-2xl p-4 shadow-sm lg:col-span-2">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-semibold">Exports</span>
@@ -114,6 +113,7 @@ export default function ExpensesPage() {
           >
             Download Expenses CSV
           </a>
+          
           <a
             href={`${API}/api/export/budget.csv?projectId=${PROJECT_ID}`}
             className="text-xs underline text-blue-600 hover:text-blue-800"
@@ -247,7 +247,7 @@ export default function ExpensesPage() {
                   <div>${Number(exp.amount).toFixed(2)}</div>
                   <div className="text-slate-500 flex items-center justify-end gap-2">
                     {exp.category} • {String(exp.date).slice(0, 10)}
-                    {/* ✅ AI Categorize button */}
+                    {/* AI Categorize button */}
                     <button
                       onClick={() => handleAICategorize(exp.id)}
                       className="text-[10px] border rounded px-2 py-1 hover:bg-slate-100"

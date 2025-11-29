@@ -1,4 +1,3 @@
-// src/routes/projects.ts
 import { Router, Request, Response } from "express";
 import { auth as authMiddleware } from "../auth";
 import { prisma } from "../prisma";
@@ -16,7 +15,7 @@ r.use(authMiddleware);
  */
 r.get("/", async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     if (userId == null) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -59,7 +58,7 @@ r.get("/", async (req: Request, res: Response) => {
  */
 r.post("/", async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     if (userId == null) {
       return res.status(401).json({ error: "Unauthorized" });
     }

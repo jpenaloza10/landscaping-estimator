@@ -1,80 +1,174 @@
-import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+// src/routes/changeOrders.ts
+import { Router, Request, Response } from "express";
+import { auth as authMiddleware } from "../auth";
+import { prisma } from "../prisma";
 
-const prisma = new PrismaClient();
 const router = Router();
 
-// POST /api/change-orders
-router.post("/", async (req, res) => {
-  const { projectId, estimateId, title, description, amount } = req.body;
+// Require auth for all change order routes
+router.use(authMiddleware);
 
-  if (projectId == null || title == null || amount == null) {
-    return res
-      .status(400)
-      .json({ error: "projectId, title, and amount are required" });
+// Helper to normalize the current user id
+function getUserId(req: Request): number | null {
+  const raw = req.user?.id;
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * POST /api/change-orders
+ * Body: { projectId, estimateId?, title, description?, amount }
+ * Creates a change order for a project owned by the current user.
+ */
+router.post("/", async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (userId == null) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { projectId, estimateId, title, description, amount } = req.body;
+
+    if (projectId == null || title == null || amount == null) {
+      return res
+        .status(400)
+        .json({ error: "projectId, title, and amount are required" });
+    }
+
+    // projectId is numeric in DB
+    const pid = Number(projectId);
+    if (!Number.isFinite(pid)) {
+      return res.status(400).json({ error: "projectId must be a number" });
+    }
+
+    // Ensure the project belongs to this user
+    const project = await prisma.project.findFirst({
+      where: { id: pid, user_id: userId },
+      select: { id: true },
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // estimateId is a string (or undefined)
+    const eid =
+      estimateId == null || estimateId === "" ? undefined : String(estimateId);
+
+    if (eid) {
+      // Optional but safer: ensure estimate belongs to this project & user
+      const estimate = await prisma.estimate.findFirst({
+        where: { id: eid, projectId: pid },
+        include: { project: true },
+      });
+
+      if (!estimate || estimate.project.user_id !== userId) {
+        return res.status(404).json({ error: "Estimate not found" });
+      }
+    }
+
+    const co = await prisma.changeOrder.create({
+      data: {
+        projectId: pid, // number
+        estimateId: eid, // string | undefined
+        title: String(title),
+        description: description ? String(description) : undefined,
+        amount: Number(amount), // Decimal-compatible
+        // status defaults to PENDING if your schema sets a default
+      },
+    });
+
+    return res.json(co);
+  } catch (err) {
+    console.error("[changeOrders.post]", err);
+    return res.status(500).json({ error: "Failed to create change order" });
   }
-
-  // projectId is numeric in DB
-  const pid = Number(projectId);
-  if (Number.isNaN(pid)) {
-    return res.status(400).json({ error: "projectId must be a number" });
-  }
-
-  // estimateId is a string (or undefined)
-  const eid =
-    estimateId == null || estimateId === "" ? undefined : String(estimateId);
-
-  const co = await prisma.changeOrder.create({
-    data: {
-      projectId: pid, // number
-      estimateId: eid, // string | undefined
-      title: String(title),
-      description: description ? String(description) : undefined,
-      amount: Number(amount), // Decimal-compatible
-      // status defaults to PENDING if your schema sets a default
-    },
-  });
-
-  res.json(co);
 });
 
-// POST /api/change-orders/:id/approve
-router.post("/:id/approve", async (req, res) => {
-  const { id } = req.params;
+/**
+ * POST /api/change-orders/:id/approve
+ * Approve a change order if it belongs to a project owned by the current user.
+ */
+router.post("/:id/approve", async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (userId == null) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
-  // id is a string in DB
-  const idStr = String(id);
-  if (!idStr) {
-    return res.status(400).json({ error: "id must be a non-empty string" });
+    const { id } = req.params;
+
+    // id is a string in DB
+    const idStr = String(id);
+    if (!idStr) {
+      return res.status(400).json({ error: "id must be a non-empty string" });
+    }
+
+    // Load change order with its project for ownership check
+    const existing = await prisma.changeOrder.findUnique({
+      where: { id: idStr },
+      include: { project: true },
+    });
+
+    if (!existing || existing.project.user_id !== userId) {
+      return res.status(404).json({ error: "Change order not found" });
+    }
+
+    const co = await prisma.changeOrder.update({
+      where: { id: idStr },
+      data: { status: "APPROVED", decidedAt: new Date() },
+    });
+
+    return res.json(co);
+  } catch (err) {
+    console.error("[changeOrders.approve]", err);
+    return res.status(500).json({ error: "Failed to approve change order" });
   }
-
-  const co = await prisma.changeOrder.update({
-    where: { id: idStr }, // string
-    data: { status: "APPROVED", decidedAt: new Date() },
-  });
-
-  res.json(co);
 });
 
-// GET /api/change-orders?projectId=...
-router.get("/", async (req, res) => {
-  const { projectId } = req.query;
-  if (projectId == null) {
-    return res.status(400).json({ error: "projectId required" });
+/**
+ * GET /api/change-orders?projectId=...
+ * List change orders for a project owned by the current user.
+ */
+router.get("/", async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (userId == null) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { projectId } = req.query;
+    if (projectId == null) {
+      return res.status(400).json({ error: "projectId required" });
+    }
+
+    // projectId filter is numeric in DB
+    const pid = Number(Array.isArray(projectId) ? projectId[0] : projectId);
+    if (!Number.isFinite(pid)) {
+      return res.status(400).json({ error: "projectId must be a number" });
+    }
+
+    // Ensure the project belongs to this user
+    const project = await prisma.project.findFirst({
+      where: { id: pid, user_id: userId },
+      select: { id: true },
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    const list = await prisma.changeOrder.findMany({
+      where: { projectId: pid }, // number
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.json(list);
+  } catch (err) {
+    console.error("[changeOrders.list]", err);
+    return res.status(500).json({ error: "Failed to list change orders" });
   }
-
-  // projectId filter is numeric in DB
-  const pid = Number(Array.isArray(projectId) ? projectId[0] : projectId);
-  if (Number.isNaN(pid)) {
-    return res.status(400).json({ error: "projectId must be a number" });
-  }
-
-  const list = await prisma.changeOrder.findMany({
-    where: { projectId: pid }, // number
-    orderBy: { createdAt: "desc" },
-  });
-
-  res.json(list);
 });
 
 export default router;

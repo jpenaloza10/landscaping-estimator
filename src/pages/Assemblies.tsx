@@ -36,7 +36,7 @@ export default function Assemblies() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold">Assemblies</h2>
           {/* Future Add Button */}
-          {/* <button className="text-sm rounded bg-slate-900 px-3 py-1 text-white">+ Add</button> */}
+          <button className="text-sm rounded bg-slate-900 px-3 py-1 text-white">+ Add</button>
         </div>
 
         {assemblies.length === 0 ? (

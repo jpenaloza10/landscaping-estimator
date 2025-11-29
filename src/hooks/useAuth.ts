@@ -1,4 +1,3 @@
-// src/hooks/useAuth.ts
 
 // Minimal auth "hook" used by EstimateWizard and other components.
 // Right now it just reads a token from localStorage.
@@ -22,8 +21,8 @@ export function useAuth(): AuthInfo {
   if (typeof window === "undefined") {
     return { token: null };
   }
-
-  // 🔑 Make sure this key matches whatever your login flow uses.
+ 
+  // Make sure this key matches whatever your login flow uses.
   const token = window.localStorage.getItem("auth_token");
 
   return { token };

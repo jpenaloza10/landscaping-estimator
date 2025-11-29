@@ -12,7 +12,8 @@
     "generate": "prisma generate",
     "migrate:prod": "dotenv -e .env.production -- npx prisma migrate deploy",
     "db:push:prod": "dotenv -e .env.production -- npx prisma db push",
-    "start:prod": "dotenv -e .env.production -- node dist/index.js"
+    "start:prod": "dotenv -e .env.production -- node dist/index.js",
+    "check:assemblies": "ts-node scripts/checkAssemblies.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.17.0",
@@ -47,5 +48,8 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.16.2",
     "typescript": "^5.9.3"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }

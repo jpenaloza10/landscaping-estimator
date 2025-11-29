@@ -1,4 +1,3 @@
-// src/auth/AuthContext.tsx
 import React,
 {
   createContext,
@@ -20,7 +19,6 @@ export type AuthCtx = {
   token: string | null;
   loading: boolean;
 
-  // Legacy compatibility (these no longer use Supabase)
   setAuth: (token: string | null, user: SafeUser | null) => void;
   clearAuth: () => Promise<void>;
 

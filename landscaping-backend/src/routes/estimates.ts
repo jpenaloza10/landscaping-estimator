@@ -1,5 +1,7 @@
-import { Router } from "express";
+// src/routes/estimates.ts
+import { Router, Request, Response } from "express";
 import { prisma } from "../prisma";
+import { auth as authMiddleware } from "../auth";
 import { evalFormula, applyWaste } from "../services/calc";
 import { computeTax } from "../services/tax";
 import type { AssemblyItem } from "@prisma/client";
@@ -9,6 +11,17 @@ import { estimateDelivery } from "../services/delivery";
 import { createBudgetSnapshot } from "../services/budget";
 
 const r = Router();
+
+/**
+ * Helper: get numeric user id from req.user.id
+ * (auth middleware sets req.user.id as a string)
+ */
+function getUserId(req: Request): number | null {
+  const raw = req.user?.id;
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
 
 type LocationInput = {
   zip?: string;
@@ -34,19 +47,33 @@ function coerceProjectId(id: number | string): number {
   return n;
 }
 
-// helper: kebab-case for fallback material slugs
-function kebab(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
+// 🔒 All estimate routes require auth
+r.use(authMiddleware);
 
 // === Create & calculate estimate ===
-r.post("/", async (req, res) => {
+r.post("/", async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
+    if (userId == null) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const { projectId, location, lines } = req.body as CreateEstimateInput;
+
+    if (!projectId || !Array.isArray(lines) || lines.length === 0) {
+      return res.status(400).json({ error: "Invalid payload" });
+    }
+
     const projectIdNum = coerceProjectId(projectId);
+
+    // 🔒 Ensure project belongs to this user
+    const project = await prisma.project.findFirst({
+      where: { id: projectIdNum, user_id: userId },
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
 
     // Regional factor (applies when we use index/baseline pricing or for labor)
     const regionKey = makeRegionKey(location);
@@ -59,9 +86,9 @@ r.post("/", async (req, res) => {
       qty: number;
       extended: number;
       // provenance/debug
-      provider?: string;      // SupplierCSV, RetailX, CityIndex, LaborRegional, RegionalizedIndex, DeliveryEstimator
-      source?: string;        // supplier | retail | marketplace | index | baseline | delivery
-      fetchedAt?: string;     // ISO timestamp for live prices
+      provider?: string; // SupplierCSV, RetailX, CityIndex, LaborRegional, RegionalizedIndex, DeliveryEstimator
+      source?: string; // supplier | retail | marketplace | index | baseline | delivery
+      fetchedAt?: string; // ISO timestamp for live prices
       deliveryShare?: number; // proportional delivery allocated to this item
     };
 
@@ -240,21 +267,30 @@ r.post("/", async (req, res) => {
 
 // === Finalize estimate & create Budget Snapshot ===
 // Call this when the user approves/selects this estimate as the project baseline.
-r.post("/:id/finalize", async (req, res) => {
+r.post("/:id/finalize", async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
+    if (userId == null) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const { id } = req.params;
 
+    // Load estimate + owning project
     const estimate = await prisma.estimate.findUnique({
       where: { id },
+      include: { project: true },
     });
 
-    if (!estimate) {
+    if (!estimate || estimate.project.user_id !== userId) {
       return res.status(404).json({ error: "Estimate not found" });
     }
 
     // Create a budget snapshot tied to this estimate + project
-    // Adjust createBudgetSnapshot signature if your implementation differs.
-    const snapshot = await createBudgetSnapshot(estimate.projectId as any, estimate.id);
+    const snapshot = await createBudgetSnapshot(
+      estimate.projectId as any,
+      estimate.id
+    );
 
     // Optional: if you add a `status` column on Estimate, update it here:
     // await prisma.estimate.update({
@@ -270,5 +306,13 @@ r.post("/:id/finalize", async (req, res) => {
     });
   }
 });
+
+// helper: kebab-case for fallback material slugs
+function kebab(s: string) {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
 
 export default r;

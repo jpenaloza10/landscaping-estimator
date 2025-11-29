@@ -1,7 +1,9 @@
-import { Router } from "express";
-import { PrismaClient, ExpenseCategory } from "@prisma/client";
+// src/routes/expenses.ts
+import { Router, Request, Response } from "express";
+import { ExpenseCategory } from "@prisma/client";
+import { prisma } from "../prisma";
+import { auth as authMiddleware } from "../auth";
 
-const prisma = new PrismaClient();
 const router = Router();
 
 /* ------------------------------------------------------
@@ -54,29 +56,61 @@ function parseCategory(c: string | undefined): ExpenseCategory {
 }
 
 /* ------------------------------------------------------
-   Helper: resolve project by numeric id
+   Helper: get current user id from req.user
 ------------------------------------------------------ */
-async function resolveProjectId(input: { projectId?: string | number | null }) {
+function getUserId(req: Request): number {
+  const raw = req.user?.id;
+  const n = raw != null ? Number(raw) : NaN;
+  if (!Number.isFinite(n)) {
+    const err: any = new Error("Unauthorized");
+    err.status = 401;
+    throw err;
+  }
+  return n;
+}
+
+/* ------------------------------------------------------
+   Helper: resolve project by numeric id AND ownership
+------------------------------------------------------ */
+async function resolveProjectId(
+  input: { projectId?: string | number | null },
+  userId: number
+) {
   const id = toInt(input.projectId, "projectId");
-  const p = await prisma.project.findUnique({ where: { id } });
+
+  const p = await prisma.project.findFirst({
+    where: {
+      id,
+      user_id: userId, // 🔐 enforce ownership
+    },
+  });
+
   if (!p) {
     const err: any = new Error("Project not found");
     err.status = 404;
     throw err;
   }
+
   return p.id; // number
 }
 
 /* ------------------------------------------------------
-   POST /api/expenses
-   Create a new expense
+   All expense routes require auth
 ------------------------------------------------------ */
-router.post("/", async (req, res) => {
+router.use(authMiddleware);
+
+/* ------------------------------------------------------
+   POST /api/expenses
+   Create a new expense (only for user's own project)
+------------------------------------------------------ */
+router.post("/", async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
+
     const {
       projectId,
-      estimateId,       // optional (String in Prisma)
-      estimateLineId,   // optional (String in Prisma)
+      estimateId, // optional (String in Prisma)
+      estimateLineId, // optional (String in Prisma)
       category,
       vendor,
       description,
@@ -99,29 +133,33 @@ router.post("/", async (req, res) => {
       meta?: any;
     };
 
-    // Resolve numeric project id (throws 400/404 if invalid/not found)
-    const resolvedProjectId = await resolveProjectId({ projectId });
+    // Resolve numeric project id and check ownership (throws 400/404 if invalid/not found)
+    const resolvedProjectId = await resolveProjectId({ projectId }, userId);
 
     // Coerce amount & date
     const amountNum = toNumber(amount, "amount");
     const when = parseISODate(date, "date");
 
-    // 🔧 Ensure STRING types for Prisma (estimateId, estimateLineId are String in schema)
+    // Ensure STRING types for Prisma (estimateId, estimateLineId are String in schema)
     const estimateIdStr =
-      estimateId === null || estimateId === undefined || String(estimateId).trim() === ""
+      estimateId === null ||
+      estimateId === undefined ||
+      String(estimateId).trim() === ""
         ? undefined
         : String(estimateId);
 
     const estimateLineIdStr =
-      estimateLineId === null || estimateLineId === undefined || String(estimateLineId).trim() === ""
+      estimateLineId === null ||
+      estimateLineId === undefined ||
+      String(estimateLineId).trim() === ""
         ? undefined
         : String(estimateLineId);
 
     const expense = await prisma.expense.create({
       data: {
         projectId: resolvedProjectId, // number (Int)
-        estimateId: estimateIdStr,          // string | undefined
-        estimateLineId: estimateLineIdStr,  // string | undefined
+        estimateId: estimateIdStr, // string | undefined
+        estimateLineId: estimateLineIdStr, // string | undefined
         category: parseCategory(category),
         vendor: vendor || undefined,
         description: description || undefined,
@@ -135,20 +173,26 @@ router.post("/", async (req, res) => {
 
     res.json(expense);
   } catch (e: any) {
-    console.error(e);
-    res.status(e?.status ?? 400).json({ error: e.message });
+    console.error("[expenses.post]", e);
+    res.status(e?.status ?? 400).json({ error: e.message ?? "Failed to create expense" });
   }
 });
 
 /* ------------------------------------------------------
    GET /api/expenses?projectId=123
    Optional: ?take=100&skip=0 for pagination
+   Only returns expenses for user's own project
 ------------------------------------------------------ */
-router.get("/", async (req, res) => {
+router.get("/", async (req: Request, res: Response) => {
   try {
-    const resolvedProjectId = await resolveProjectId({
-      projectId: (req.query.projectId as string | number) ?? undefined,
-    });
+    const userId = getUserId(req);
+
+    const resolvedProjectId = await resolveProjectId(
+      {
+        projectId: (req.query.projectId as string | number) ?? undefined,
+      },
+      userId
+    );
 
     // Optional pagination
     const take =
@@ -162,7 +206,7 @@ router.get("/", async (req, res) => {
         : undefined;
 
     const expenses = await prisma.expense.findMany({
-      where: { projectId: resolvedProjectId }, // number (Int)
+      where: { projectId: resolvedProjectId }, // number (Int), already scoped by ownership via resolveProjectId
       orderBy: { date: "asc" },
       ...(typeof take === "number" ? { take } : {}),
       ...(typeof skip === "number" ? { skip } : {}),
@@ -170,8 +214,8 @@ router.get("/", async (req, res) => {
 
     res.json(expenses);
   } catch (e: any) {
-    console.error(e);
-    res.status(e?.status ?? 400).json({ error: e.message });
+    console.error("[expenses.get]", e);
+    res.status(e?.status ?? 400).json({ error: e.message ?? "Failed to load expenses" });
   }
 });
 

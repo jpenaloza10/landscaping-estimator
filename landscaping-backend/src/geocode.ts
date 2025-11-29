@@ -1,4 +1,3 @@
-// src/geocode.ts
 import fetch from "node-fetch";
 
 export type GeocodeResult = {

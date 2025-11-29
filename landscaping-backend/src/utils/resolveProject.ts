@@ -1,4 +1,3 @@
-// src/utils/resolveProject.ts
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
@@ -51,9 +50,6 @@ export async function resolveProjectId(input: {
   return id;
 }
 
-/**
- * Optional helper if some callers need the full Project record.
- */
 export async function resolveProject(input: {
   projectId?: string | number | null;
 }) {

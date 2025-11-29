@@ -10,7 +10,7 @@ export default function ProposalViewer() {
   const [fileExists, setFileExists] = useState(true);
 
   useEffect(() => {
-    // ✅ HEAD request to check if PDF exists
+    // HEAD request to check if PDF exists
     async function checkPDF() {
       try {
         const res = await fetch(pdfUrl, { method: "HEAD" });

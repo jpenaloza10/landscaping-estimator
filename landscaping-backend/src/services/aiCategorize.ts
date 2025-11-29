@@ -1,4 +1,3 @@
-// src/services/aiCategorize.ts
 import { ExpenseCategory } from "@prisma/client";
 
 const ALLOWED = ["MATERIAL","LABOR","EQUIPMENT","SUBCONTRACTOR","OTHER"];

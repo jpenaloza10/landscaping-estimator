@@ -1,4 +1,3 @@
-// src/routes/uploads.ts
 import { Router } from "express";
 import { createClient } from "@supabase/supabase-js";
 
@@ -17,7 +16,7 @@ router.post("/sign", async (req, res) => {
     const { data, error } = await supabase
       .storage
       .from("receipts")
-      .createSignedUploadUrl(fileName, { upsert: true }); // ✅ only upsert here
+      .createSignedUploadUrl(fileName, { upsert: true }); // only upsert here
 
     if (error) return res.status(400).json({ error: error.message });
 

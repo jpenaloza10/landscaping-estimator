@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { supabase } from "../lib/supabase"; // optional: to save display name to user metadata
+import { supabase } from "../lib/supabase"; 
 
 export default function SignUp() {
   const navigate = useNavigate();

@@ -1,6 +1,7 @@
 // src/routes/dashboard.ts
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { prisma } from "../prisma";
+import { auth as authMiddleware } from "../auth";
 
 const router = Router();
 
@@ -10,9 +11,20 @@ function toNum(n: any): number {
   return Number(n);
 }
 
+// Helper to get current user id (number) from req.user.id
+function getUserId(req: Request): number | null {
+  const raw = req.user?.id;
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+// All dashboard routes require auth
+router.use(authMiddleware);
+
 /**
  * GET /api/dashboard/summary
- * Overall metrics:
+ * Overall metrics for the CURRENT USER ONLY:
  * - totalProjects
  * - totalEstimates
  * - totalEstimateValue
@@ -20,13 +32,16 @@ function toNum(n: any): number {
  * - totalApprovedChangeOrders
  * - contractValue
  * - grossProfit
- *
- * Currently aggregates across all projects in the database.
- * (You can later filter by user_id if you want it per-user.)
  */
-router.get("/summary", async (_req, res) => {
+router.get("/summary", async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
+    if (userId == null) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const projects = await prisma.project.findMany({
+      where: { user_id: userId },
       include: {
         estimates: true,
         expenses: true,
@@ -43,14 +58,17 @@ router.get("/summary", async (_req, res) => {
 
     for (const p of projects) {
       totalEstimates += p.estimates.length;
+
       totalEstimateValue += p.estimates.reduce(
         (s, est) => s + toNum(est.total),
         0
       );
+
       totalExpenses += p.expenses.reduce(
         (s, e) => s + toNum(e.amount),
         0
       );
+
       totalApprovedChangeOrders += p.changeOrders
         .filter((co) => co.status === "APPROVED")
         .reduce((s, co) => s + toNum(co.amount), 0);
@@ -76,7 +94,7 @@ router.get("/summary", async (_req, res) => {
 
 /**
  * GET /api/dashboard/projects
- * Per-project financials:
+ * Per-project financials for the CURRENT USER ONLY:
  * - id, name, city, state, created_at
  * - estimatesTotal
  * - expensesTotal
@@ -84,9 +102,15 @@ router.get("/summary", async (_req, res) => {
  * - contractValue
  * - grossProfit
  */
-router.get("/projects", async (_req, res) => {
+router.get("/projects", async (req: Request, res: Response) => {
   try {
+    const userId = getUserId(req);
+    if (userId == null) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const projects = await prisma.project.findMany({
+      where: { user_id: userId },
       include: {
         estimates: true,
         expenses: true,

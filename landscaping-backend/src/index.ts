@@ -2,13 +2,13 @@ import "dotenv/config";
 import express, { Request, Response } from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
-//import projects from "./routes/projects";
 import projectsRouter from "./routes/projects";
 import assembliesRouter from "./routes/assemblies";
 import pricingRouter from "./routes/pricing";
 import expensesRouter from "./routes/expenses";
 import reportsRouter from "./routes/reports";
 import expenseReceiptRouter from "./routes/expenseReceipt";
+import estimatesRouter from "./routes/estimates";
 import expenseAIRouter from "./routes/expenseAI";
 import changeOrdersRouter from "./routes/changeOrders";
 import exportRouter from "./routes/export";
@@ -16,8 +16,6 @@ import aiRouter from "./routes/ai";
 import dashboardRouter from "./routes/dashboard";
 import { prisma } from "./prisma";
 import { SafeUser } from "./types/user";
-import { geocode } from "./geocode";
-import { createProjectSchema, CreateProjectBody } from "./validation/project";
 import { signToken, auth as authMiddleware } from "./auth";
 
 // Supabase admin client for Storage signing
@@ -74,10 +72,8 @@ const corsOptions: cors.CorsOptions = {
   // You’re using Authorization: Bearer (no cross-site cookies), so:
   credentials: false,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  // Let cors reflect requested headers to avoid case / variant mismatches
-  // allowedHeaders: undefined,
+  allowedHeaders: ["Content-Type", "Authorization"], // important for JWT header
   optionsSuccessStatus: 204,
-  allowedHeaders: ["Content-Type", "Authorization"], // ⬅️ important for JWT header
   maxAge: 600, // cache preflight for 10 minutes
 };
 
@@ -95,29 +91,20 @@ app.get("/", (_req, res) => {
   res.type("text/plain").send("Landscaping Estimator API: OK");
 });
 
-//app.use("/api/projects", projects);
+/* -------------------------------- ROUTERS -------------------------------- */
 
 app.use("/api/projects", projectsRouter);
-
 app.use("/api/assemblies", assembliesRouter);
-
 app.use("/api/pricing", pricingRouter);
-
 app.use("/api/expenses", expensesRouter);
-
 app.use("/api/reports", reportsRouter);
-
 app.use("/api/expenses", expenseReceiptRouter);
-
 app.use("/api/expenses", expenseAIRouter);
-
 app.use("/api/change-orders", changeOrdersRouter);
-
 app.use("/api/export", exportRouter);
-
 app.use("/api/ai", aiRouter);
-
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/estimates", estimatesRouter);
 
 app.get("/api/assemblies/ping", (_req, res) => {
   res.json({ ok: true, when: new Date().toISOString() });
@@ -202,110 +189,22 @@ app.post("/api/auth/login", loginHandler);
 app.post("/api/login", loginHandler);
 
 app.get("/api/auth/me", authMiddleware, async (req: Request, res: Response) => {
-  if (req.user?.userId == null) return res.status(401).json({ error: "Unauthorized" });
+  // auth middleware sets req.user.id (string)
+  if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
 
-  // user.id is Int
+  const userId = Number(req.user.id);
+  if (!Number.isFinite(userId)) {
+    return res.status(400).json({ error: "Invalid user id on request" });
+  }
+
   const user = await prisma.user.findUnique({
-    where: { id: Number(req.user.userId) },
+    where: { id: userId },
     select: { id: true, name: true, email: true },
   });
 
   if (!user) return res.status(404).json({ error: "User not found" });
   return res.json({ user });
 });
-
-/* ------------------------------- PROJECTS ------------------------------- */
-
-/**
- * Create project
- * For now, this does NOT rely on backend JWT auth, so it doesn't use req.user.
- * You can later wire this to Supabase user IDs if you want tighter multi-tenant separation.
- */
-app.post(
-  "/api/projects",
-  async (req: Request<{}, {}, CreateProjectBody>, res: Response) => {
-    try {
-      // Validate body (zod)
-      const parsed = createProjectSchema.safeParse(req.body ?? {});
-      if (!parsed.success) {
-        return res.status(400).json({
-          error: "Invalid payload",
-          details: parsed.error.flatten(),
-        });
-      }
-      const { name, description, location } = parsed.data;
-
-      // Geocode (graceful fallback)
-      const g = await geocode(location);
-
-      // TEMP: use a default user_id = 1 until you decide how to tie this to Supabase users
-      const DEFAULT_USER_ID = 1;
-
-      const project = await prisma.project.create({
-        data: {
-          user_id: DEFAULT_USER_ID,
-          name,
-          description,
-          location, // raw input
-          address: g?.address ?? null,
-          city: g?.city ?? null,
-          state: g?.state ?? null,
-          postal_code: g?.postal_code ?? null,
-          country: g?.country ?? null,
-          latitude: g?.latitude ?? null,
-          longitude: g?.longitude ?? null,
-        },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          location: true,
-          address: true,
-          city: true,
-          state: true,
-          postal_code: true,
-          country: true,
-          latitude: true,
-          longitude: true,
-          created_at: true,
-          updated_at: true,
-        },
-      });
-
-      return res.status(201).json({ project });
-    } catch (e) {
-      console.error("Create project error:", e);
-      return res.status(500).json({ error: "Failed to create project" });
-    }
-  }
-);
-
-/**
- * List projects
- * Public for now (no backend JWT auth). Returns all projects, newest first.
- * Later you can filter by a "default" user or a Supabase-linked user_id.
- */
-app.get("/api/projects", async (_req: Request, res: Response) => {
-  try {
-    const projects = await prisma.project.findMany({
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        location: true,
-        created_at: true,
-        updated_at: true,
-      },
-      orderBy: { created_at: "desc" },
-    });
-
-    return res.json({ projects });
-  } catch (e) {
-    console.error("List projects error:", e);
-    return res.status(500).json({ error: "Failed to list projects" });
-  }
-});
-
 
 /* --------------------------- SUPABASE: UPLOADS -------------------------- */
 
@@ -337,7 +236,7 @@ const signUploadSchema = z.object({
  */
 app.post("/api/uploads/sign", authMiddleware, async (req: Request, res: Response) => {
   try {
-    if (req.user?.userId == null) return res.status(401).json({ error: "Unauthorized" });
+    if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
 
     const parsed = signUploadSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
@@ -347,9 +246,14 @@ app.post("/api/uploads/sign", authMiddleware, async (req: Request, res: Response
     }
     const { project_id, filename, mime_type } = parsed.data;
 
+    const numericUserId = Number(req.user.id);
+    if (!Number.isFinite(numericUserId)) {
+      return res.status(400).json({ error: "Invalid user id on request" });
+    }
+
     // Verify the project belongs to this user
     const owns = await prisma.project.findFirst({
-      where: { id: project_id, user_id: Number(req.user.userId) },
+      where: { id: project_id, user_id: numericUserId },
       select: { id: true },
     });
     if (!owns) return res.status(404).json({ error: "Project not found" });
@@ -404,12 +308,12 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
         res.setHeader("Vary", "Origin");
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
-  // If you don't use cookies, it's fine to omit Allow-Credentials
   res.status(500).json({ error: err?.message || "Server error" });
 });
-
 
 const port = Number(process.env.PORT || 8080);
 app.listen(port, () => console.log(`API listening on http://localhost:${port}`));

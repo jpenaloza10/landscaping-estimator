@@ -1,4 +1,3 @@
-// src/components/ReceiptUpload.tsx
 import { useState } from "react";
 import { supabase } from "../lib/supabase"; // createClient(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
 
