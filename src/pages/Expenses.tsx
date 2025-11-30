@@ -4,11 +4,11 @@ import {
   getBudgetReport,
   listExpenses,
   createExpense as createExpenseApi,
+  getProjects,
   authedFetch,
+  type Project,
 } from "../lib/api";
 import ReceiptUpload from "../components/ReceiptUpload";
-
-const PROJECT_ID = Number(import.meta.env.VITE_DEFAULT_PROJECT_ID ?? 1);
 
 const CATEGORIES = ["MATERIAL", "LABOR", "EQUIPMENT", "SUBCONTRACTOR", "OTHER"] as const;
 
@@ -23,6 +23,9 @@ type BudgetReport = {
 };
 
 export default function ExpensesPage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
+
   const [report, setReport] = useState<BudgetReport | null>(null);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [form, setForm] = useState({
@@ -34,7 +37,7 @@ export default function ExpensesPage() {
   });
   const [loading, setLoading] = useState(true);
 
-  // --- Fetchers now use authed API helpers ---
+  // --- Fetchers using authed API helpers ---
   async function fetchBudgetReportForProject(projectId: number): Promise<BudgetReport> {
     return getBudgetReport(projectId);
   }
@@ -62,12 +65,12 @@ export default function ExpensesPage() {
   }
   // --------------------------------------------------
 
-  async function refresh() {
+  async function refresh(projectId: number) {
     setLoading(true);
     try {
       const [r, e] = await Promise.all([
-        fetchBudgetReportForProject(PROJECT_ID),
-        fetchExpensesForProject(PROJECT_ID),
+        fetchBudgetReportForProject(projectId),
+        fetchExpensesForProject(projectId),
       ]);
       setReport(r);
       setExpenses(e);
@@ -76,14 +79,41 @@ export default function ExpensesPage() {
     }
   }
 
+  // Load projects on mount and pick a default project for this user
   useEffect(() => {
-    void refresh();
+    (async () => {
+      try {
+        const ps = await getProjects();
+        setProjects(ps);
+        if (ps.length > 0) {
+          const firstId = ps[0].id;
+          setActiveProjectId(firstId);
+          await refresh(firstId);
+        } else {
+          setActiveProjectId(null);
+          setReport(null);
+          setExpenses([]);
+        }
+      } catch (err) {
+        console.error("Failed to load projects for expenses page", err);
+        setActiveProjectId(null);
+      }
+    })();
   }, []);
+
+  // When the active project changes, reload data
+  useEffect(() => {
+    if (activeProjectId != null) {
+      void refresh(activeProjectId);
+    }
+  }, [activeProjectId]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (activeProjectId == null) return;
+
     await createExpense({
-      projectId: PROJECT_ID,
+      projectId: activeProjectId,
       category: form.category,
       vendor: form.vendor || undefined,
       description: form.description || undefined,
@@ -91,46 +121,82 @@ export default function ExpensesPage() {
       date: form.date,
     });
     setForm((f) => ({ ...f, vendor: "", description: "", amount: "" }));
-    await refresh();
+    await refresh(activeProjectId);
   }
 
-  // AI Categorization function (now authed as well)
+  // AI Categorization function (authed)
   async function handleAICategorize(id: string) {
+    if (activeProjectId == null) return;
     try {
       await authedFetch(`/api/expenses/${id}/auto-categorize`, { method: "POST" });
-      await refresh();
+      await refresh(activeProjectId);
     } catch (err) {
       console.error("AI categorization failed", err);
     }
   }
 
+  const currentProject =
+    activeProjectId != null
+      ? projects.find((p) => p.id === activeProjectId) ?? null
+      : null;
+
   return (
     <div className="grid gap-6 lg:grid-cols-[2fr,3fr]">
-      {/* Export toolbar (full width) */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm lg:col-span-2">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-semibold">Exports</span>
-          <a
-            href={`${API}/api/export/expenses.csv?projectId=${PROJECT_ID}`}
-            className="text-xs underline text-blue-600 hover:text-blue-800"
+      {/* Export toolbar + project selector */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm lg:col-span-2 flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold">Project</span>
+          <select
+            className="border rounded px-2 py-1 text-sm"
+            value={activeProjectId ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              setActiveProjectId(v ? Number(v) : null);
+            }}
           >
-            Download Expenses CSV
-          </a>
-
-          <a
-            href={`${API}/api/export/budget.csv?projectId=${PROJECT_ID}`}
-            className="text-xs underline text-blue-600 hover:text-blue-800"
-          >
-            Download Budget CSV
-          </a>
+            {projects.length === 0 && <option value="">No projects</option>}
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
         </div>
+
+        {activeProjectId != null && (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold">Exports</span>
+            <a
+              href={`${API}/api/export/expenses.csv?projectId=${activeProjectId}`}
+              className="text-xs underline text-blue-600 hover:text-blue-800"
+            >
+              Download Expenses CSV
+            </a>
+
+            <a
+              href={`${API}/api/export/budget.csv?projectId=${activeProjectId}`}
+              className="text-xs underline text-blue-600 hover:text-blue-800"
+            >
+              Download Budget CSV
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Left: Budget snapshot */}
       <section className="bg-white rounded-2xl p-4 shadow-sm">
-        <h2 className="font-semibold mb-2">Budget Snapshot</h2>
-        {loading && <p className="text-sm text-slate-500">Loading…</p>}
-        {report && report.hasBaseline && !loading && (
+        <h2 className="font-semibold mb-2">
+          Budget Snapshot {currentProject ? `– ${currentProject.name}` : ""}
+        </h2>
+        {activeProjectId == null && (
+          <p className="text-sm text-slate-500">
+            No projects yet. Create a project first to track expenses.
+          </p>
+        )}
+        {activeProjectId != null && loading && (
+          <p className="text-sm text-slate-500">Loading…</p>
+        )}
+        {activeProjectId != null && report && report.hasBaseline && !loading && (
           <>
             <p className="text-sm mb-2">
               Baseline: <strong>${report.baselineTotal.toFixed(2)}</strong>
@@ -161,7 +227,7 @@ export default function ExpensesPage() {
             </div>
           </>
         )}
-        {report && !report.hasBaseline && !loading && (
+        {activeProjectId != null && report && !report.hasBaseline && !loading && (
           <p className="text-sm text-slate-500">
             No baseline yet. Finalize an estimate to create a budget snapshot.
           </p>
@@ -170,102 +236,111 @@ export default function ExpensesPage() {
 
       {/* Right: Receipt upload + Expense entry + list */}
       <section className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-4">
-        {/* 🔧 Pass a string here to match ReceiptUpload's prop type */}
-        <ReceiptUpload projectId={String(PROJECT_ID)} onCreated={refresh} />
+        {activeProjectId == null ? (
+          <p className="text-sm text-slate-500">
+            Create a project first to upload receipts and add expenses.
+          </p>
+        ) : (
+          <>
+            {/* Receipt upload */}
+            <ReceiptUpload projectId={String(activeProjectId)} onCreated={() => refresh(activeProjectId)} />
 
-        {/* Manual expense form */}
-        <form onSubmit={onSubmit} className="grid gap-2 sm:grid-cols-5 items-end text-xs">
-          <div className="sm:col-span-1">
-            <label className="block mb-1 font-medium">Category</label>
-            <select
-              className="w-full border rounded p-2"
-              value={form.category}
-              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-          <div className="sm:col-span-1">
-            <label className="block mb-1 font-medium">Vendor</label>
-            <input
-              className="w-full border rounded p-2"
-              value={form.vendor}
-              onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
-            />
-          </div>
-          <div className="sm:col-span-1">
-            <label className="block mb-1 font-medium">Amount</label>
-            <input
-              type="number"
-              step="0.01"
-              className="w-full border rounded p-2"
-              value={form.amount}
-              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-              required
-            />
-          </div>
-          <div className="sm:col-span-1">
-            <label className="block mb-1 font-medium">Date</label>
-            <input
-              type="date"
-              className="w-full border rounded p-2"
-              value={form.date}
-              onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-              required
-            />
-          </div>
-          <div className="sm:col-span-1">
-            <button
-              type="submit"
-              className="w-full rounded bg-slate-900 text-white px-3 py-2"
-            >
-              Add
-            </button>
-          </div>
-          <div className="sm:col-span-5">
-            <label className="block mb-1 font-medium">Description</label>
-            <input
-              className="w-full border rounded p-2"
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            />
-          </div>
-        </form>
-
-        {/* Expense list */}
-        <div className="border-t pt-3 flex-1 overflow-auto">
-          <h3 className="font-semibold text-sm mb-2">Expenses</h3>
-          <div className="space-y-1 text-xs">
-            {expenses.map((exp) => (
-              <div key={exp.id} className="flex justify-between gap-2 border-b pb-1">
-                <div className="flex flex-col">
-                  <span className="font-medium">{exp.vendor || exp.category}</span>
-                  <span className="text-slate-500">
-                    {exp.description || "No description"}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <div>${Number(exp.amount).toFixed(2)}</div>
-                  <div className="text-slate-500 flex items-center justify-end gap-2">
-                    {exp.category} • {String(exp.date).slice(0, 10)}
-                    {/* AI Categorize button */}
-                    <button
-                      onClick={() => handleAICategorize(exp.id)}
-                      className="text-[10px] border rounded px-2 py-1 hover:bg-slate-100"
-                    >
-                      Categorize
-                    </button>
-                  </div>
-                </div>
+            {/* Manual expense form */}
+            <form onSubmit={onSubmit} className="grid gap-2 sm:grid-cols-5 items-end text-xs">
+              <div className="sm:col-span-1">
+                <label className="block mb-1 font-medium">Category</label>
+                <select
+                  className="w-full border rounded p-2"
+                  value={form.category}
+                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
               </div>
-            ))}
-            {expenses.length === 0 && !loading && (
-              <p className="text-slate-500">No expenses logged yet.</p>
-            )}
-          </div>
-        </div>
+              <div className="sm:col-span-1">
+                <label className="block mb-1 font-medium">Vendor</label>
+                <input
+                  className="w-full border rounded p-2"
+                  value={form.vendor}
+                  onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
+                />
+              </div>
+              <div className="sm:col-span-1">
+                <label className="block mb-1 font-medium">Amount</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full border rounded p-2"
+                  value={form.amount}
+                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="sm:col-span-1">
+                <label className="block mb-1 font-medium">Date</label>
+                <input
+                  type="date"
+                  className="w-full border rounded p-2"
+                  value={form.date}
+                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="sm:col-span-1">
+                <button
+                  type="submit"
+                  className="w-full rounded bg-slate-900 text-white px-3 py-2"
+                  disabled={activeProjectId == null}
+                >
+                  Add
+                </button>
+              </div>
+              <div className="sm:col-span-5">
+                <label className="block mb-1 font-medium">Description</label>
+                <input
+                  className="w-full border rounded p-2"
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                />
+              </div>
+            </form>
+
+            {/* Expense list */}
+            <div className="border-t pt-3 flex-1 overflow-auto">
+              <h3 className="font-semibold text-sm mb-2">Expenses</h3>
+              <div className="space-y-1 text-xs">
+                {expenses.map((exp) => (
+                  <div key={exp.id} className="flex justify-between gap-2 border-b pb-1">
+                    <div className="flex flex-col">
+                      <span className="font-medium">{exp.vendor || exp.category}</span>
+                      <span className="text-slate-500">
+                        {exp.description || "No description"}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div>${Number(exp.amount).toFixed(2)}</div>
+                      <div className="text-slate-500 flex items-center justify-end gap-2">
+                        {exp.category} • {String(exp.date).slice(0, 10)}
+                        {/* AI Categorize button */}
+                        <button
+                          onClick={() => handleAICategorize(exp.id)}
+                          className="text-[10px] border rounded px-2 py-1 hover:bg-slate-100"
+                        >
+                          Categorize
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {expenses.length === 0 && !loading && (
+                  <p className="text-slate-500">No expenses logged yet.</p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );
