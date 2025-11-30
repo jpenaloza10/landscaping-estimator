@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createEstimate, listAssemblies } from "../lib/api";
+import { createEstimate, listAssemblies, getProjects, type Project } from "../lib/api";
 import DownloadPdfButton from "../components/DownloadPdfButton";
 
 // 🔥 AI Assistant Panel (Sprint 6)
@@ -49,12 +49,13 @@ type Estimate = {
   location?: any;
 };
 
-// Numeric project ID for backend (matches prisma Project.id: Int)
-const PROJECT_ID = Number(import.meta.env.VITE_DEFAULT_PROJECT_ID ?? 1);
-
 export default function EstimateWizard() {
   const [assemblies, setAssemblies] = useState<Assembly[]>([]);
   const [assemblyId, setAssemblyId] = useState<string>("");
+
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
+
   const [area, setArea] = useState<number>(300);
   const [zip, setZip] = useState("94103");
   const [state, setState] = useState("CA");
@@ -67,15 +68,28 @@ export default function EstimateWizard() {
   // Auth token for AI routes
   const { token } = useAuth();
 
-  // Load assemblies on mount
+  // Load assemblies + projects on mount
   useEffect(() => {
     setError("");
-    listAssemblies()
-      .then((data) => {
-        setAssemblies(data || []);
-        if (data?.length) setAssemblyId(data[0].id);
-      })
-      .catch((e) => setError(e?.message || "Failed to load assemblies"));
+    (async () => {
+      try {
+        const [assembliesData, projectsData] = await Promise.all([
+          listAssemblies(),
+          getProjects(),
+        ]);
+
+        setAssemblies(assembliesData || []);
+        if (assembliesData?.length) setAssemblyId(assembliesData[0].id);
+
+        setProjects(projectsData || []);
+        if (projectsData?.length && activeProjectId == null) {
+          setActiveProjectId(projectsData[0].id);
+        }
+      } catch (e: any) {
+        setError(e?.message || "Failed to load assemblies or projects");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Keep state uppercase
@@ -91,20 +105,21 @@ export default function EstimateWizard() {
   const canCreate =
     !loading &&
     !!assemblyId &&
+    activeProjectId != null &&
     Number.isFinite(area) &&
     area > 0 &&
     state.trim().length > 0 &&
     zip.trim().length > 0;
 
   async function handleCreate() {
-    if (!canCreate) return;
+    if (!canCreate || activeProjectId == null) return;
     setLoading(true);
     setError("");
     setEstimate(null);
 
     try {
       const est = (await createEstimate({
-        projectId: PROJECT_ID, // number, matches backend schema
+        projectId: activeProjectId, // 🔐 project owned by current user
         location: { zip, state },
         lines: [{ assemblyId, inputs: { area } }],
       })) as Estimate;
@@ -118,17 +133,59 @@ export default function EstimateWizard() {
       // Navigate to proposal page; AI panel still visible on this screen
       navigate(`/proposals/${est.id}`);
     } catch (e: any) {
-      setError(e?.message || "Failed to create estimate");
+      // If backend throws "Project not found", bubble that up
+      const msg =
+        e?.payload?.error ||
+        e?.message ||
+        "Failed to create estimate";
+      setError(msg);
     } finally {
       setLoading(false);
     }
   }
+
+  const currentProject =
+    activeProjectId != null
+      ? projects.find((p) => p.id === activeProjectId) ?? null
+      : null;
 
   return (
     <div className="grid gap-4">
       {/* Wizard input card */}
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <h2 className="font-semibold mb-3">Estimate Wizard</h2>
+
+        {/* Project selector */}
+        <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
+          <label className="flex items-center gap-2">
+            <span className="font-medium">Project</span>
+            <select
+              className="border rounded px-2 py-1"
+              value={activeProjectId ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setActiveProjectId(v ? Number(v) : null);
+              }}
+            >
+              {projects.length === 0 && <option value="">No projects</option>}
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {currentProject && (
+            <span className="text-xs text-slate-500">
+              Creating estimate for: <strong>{currentProject.name}</strong>
+            </span>
+          )}
+          {projects.length === 0 && (
+            <span className="text-xs text-red-600">
+              No projects yet. Create a project first.
+            </span>
+          )}
+        </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm">
