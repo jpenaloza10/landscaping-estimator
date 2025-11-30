@@ -57,13 +57,18 @@ router.post("/", async (req: Request, res: Response) => {
       estimateId == null || estimateId === "" ? undefined : String(estimateId);
 
     if (eid) {
-      // Optional but safer: ensure estimate belongs to this project & user
+      // Ensure estimate belongs to this project & user (ownership in where clause)
       const estimate = await prisma.estimate.findFirst({
-        where: { id: eid, projectId: pid },
-        include: { project: true },
+        where: {
+          id: eid,
+          projectId: pid,
+          project: {
+            user_id: userId,
+          },
+        },
       });
 
-      if (!estimate || estimate.project.user_id !== userId) {
+      if (!estimate) {
         return res.status(404).json({ error: "Estimate not found" });
       }
     }
@@ -111,7 +116,7 @@ router.post("/:id/approve", async (req: Request, res: Response) => {
       include: { project: true },
     });
 
-    if (!existing || existing.project.user_id !== userId) {
+    if (!existing || !existing.project || existing.project.user_id !== userId) {
       return res.status(404).json({ error: "Change order not found" });
     }
 

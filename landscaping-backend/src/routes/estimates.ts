@@ -276,13 +276,17 @@ r.post("/:id/finalize", async (req: Request, res: Response) => {
 
     const { id } = req.params;
 
-    // Load estimate + owning project
-    const estimate = await prisma.estimate.findUnique({
-      where: { id },
-      include: { project: true },
+    // Load estimate that belongs to this user's project
+    const estimate = await prisma.estimate.findFirst({
+      where: {
+        id,
+        project: {
+          user_id: userId,
+        },
+      },
     });
 
-    if (!estimate || estimate.project.user_id !== userId) {
+    if (!estimate) {
       return res.status(404).json({ error: "Estimate not found" });
     }
 

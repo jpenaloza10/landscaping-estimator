@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { API } from "../lib/api"; // base URL only
+import {
+  API,
+  getBudgetReport,
+  listExpenses,
+  createExpense as createExpenseApi,
+  authedFetch,
+} from "../lib/api";
 import ReceiptUpload from "../components/ReceiptUpload";
 
 const PROJECT_ID = Number(import.meta.env.VITE_DEFAULT_PROJECT_ID ?? 1);
@@ -28,17 +34,13 @@ export default function ExpensesPage() {
   });
   const [loading, setLoading] = useState(true);
 
-  // --- Updated local fetchers that use projectId ---
-  async function fetchBudgetReport(projectId: number): Promise<BudgetReport> {
-    const res = await fetch(`${API}/api/reports/budget?projectId=${projectId}`);
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+  // --- Fetchers now use authed API helpers ---
+  async function fetchBudgetReportForProject(projectId: number): Promise<BudgetReport> {
+    return getBudgetReport(projectId);
   }
 
-  async function fetchExpenses(projectId: number) {
-    const res = await fetch(`${API}/api/expenses?projectId=${projectId}`);
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+  async function fetchExpensesForProject(projectId: number) {
+    return listExpenses(projectId);
   }
 
   async function createExpense(payload: {
@@ -49,13 +51,14 @@ export default function ExpensesPage() {
     amount: number;
     date: string;
   }) {
-    const res = await fetch(`${API}/api/expenses`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+    return createExpenseApi({
+      projectId: payload.projectId,
+      category: payload.category,
+      vendor: payload.vendor,
+      description: payload.description,
+      amount: payload.amount,
+      date: payload.date,
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
   }
   // --------------------------------------------------
 
@@ -63,8 +66,8 @@ export default function ExpensesPage() {
     setLoading(true);
     try {
       const [r, e] = await Promise.all([
-        fetchBudgetReport(PROJECT_ID),
-        fetchExpenses(PROJECT_ID),
+        fetchBudgetReportForProject(PROJECT_ID),
+        fetchExpensesForProject(PROJECT_ID),
       ]);
       setReport(r);
       setExpenses(e);
@@ -91,10 +94,10 @@ export default function ExpensesPage() {
     await refresh();
   }
 
-  // AI Categorization function
+  // AI Categorization function (now authed as well)
   async function handleAICategorize(id: string) {
     try {
-      await fetch(`${API}/api/expenses/${id}/auto-categorize`, { method: "POST" });
+      await authedFetch(`/api/expenses/${id}/auto-categorize`, { method: "POST" });
       await refresh();
     } catch (err) {
       console.error("AI categorization failed", err);
@@ -113,7 +116,7 @@ export default function ExpensesPage() {
           >
             Download Expenses CSV
           </a>
-          
+
           <a
             href={`${API}/api/export/budget.csv?projectId=${PROJECT_ID}`}
             className="text-xs underline text-blue-600 hover:text-blue-800"
