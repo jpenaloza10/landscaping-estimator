@@ -1,4 +1,3 @@
-
 /* =========================
    Base URL
    ========================= */
@@ -108,7 +107,7 @@ export async function api<T = unknown>(
 /* =========================
    Raw fetch helper
    ========================= */
-async function apiRaw(path: string, init: RequestInit = {}): Promise<Response> {
+export async function apiRaw(path: string, init: RequestInit = {}): Promise<Response> {
   if (!BASE_URL) {
     throw new Error("VITE_API_URL is not set. Add it to your .env and redeploy.");
   }
@@ -323,7 +322,7 @@ export async function listEstimates(projectId: number): Promise<Estimate[]> {
 }
 
 export async function finalizeEstimate(estimateId: string): Promise<void> {
-  await api(`/api/estimates/${encodeURIComponent(estimateId)}/finalize`, {
+  await api(`/api/estimates/${encodeURIComponent(estimateId)}//finalize`, {
     method: "POST",
   });
 }

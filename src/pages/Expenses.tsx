@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import {
-  API,
   getBudgetReport,
   listExpenses,
   createExpense as createExpenseApi,
   getProjects,
   authedFetch,
+  apiRaw,         // ⬅️ NEW: for authenticated CSV/PDF downloads
   type Project,
 } from "../lib/api";
 import ReceiptUpload from "../components/ReceiptUpload";
@@ -135,6 +135,38 @@ export default function ExpensesPage() {
     }
   }
 
+  // --- CSV download helpers using apiRaw (includes Authorization header) ---
+  async function downloadCsv(path: string, filename: string) {
+    const res = await apiRaw(path, { method: "GET" });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleDownloadExpensesCsv() {
+    if (activeProjectId == null) return;
+    await downloadCsv(
+      `/api/export/expenses.csv?projectId=${activeProjectId}`,
+      `expenses-project-${activeProjectId}.csv`
+    );
+  }
+
+  async function handleDownloadBudgetCsv() {
+    if (activeProjectId == null) return;
+    await downloadCsv(
+      `/api/export/budget.csv?projectId=${activeProjectId}`,
+      `budget-project-${activeProjectId}.csv`
+    );
+  }
+  // --------------------------------------------------
+
   const currentProject =
     activeProjectId != null
       ? projects.find((p) => p.id === activeProjectId) ?? null
@@ -166,19 +198,22 @@ export default function ExpensesPage() {
         {activeProjectId != null && (
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm font-semibold">Exports</span>
-            <a
-              href={`${API}/api/export/expenses.csv?projectId=${activeProjectId}`}
+
+            <button
+              type="button"
+              onClick={handleDownloadExpensesCsv}
               className="text-xs underline text-blue-600 hover:text-blue-800"
             >
               Download Expenses CSV
-            </a>
+            </button>
 
-            <a
-              href={`${API}/api/export/budget.csv?projectId=${activeProjectId}`}
+            <button
+              type="button"
+              onClick={handleDownloadBudgetCsv}
               className="text-xs underline text-blue-600 hover:text-blue-800"
             >
               Download Budget CSV
-            </a>
+            </button>
           </div>
         )}
       </div>
@@ -243,7 +278,10 @@ export default function ExpensesPage() {
         ) : (
           <>
             {/* Receipt upload */}
-            <ReceiptUpload projectId={String(activeProjectId)} onCreated={() => refresh(activeProjectId)} />
+            <ReceiptUpload
+              projectId={String(activeProjectId)}
+              onCreated={() => refresh(activeProjectId)}
+            />
 
             {/* Manual expense form */}
             <form onSubmit={onSubmit} className="grid gap-2 sm:grid-cols-5 items-end text-xs">
