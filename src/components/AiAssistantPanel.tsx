@@ -1,3 +1,4 @@
+// src/components/AiAssistantPanel.tsx
 import { useState } from "react";
 import {
   aiRecommendAssemblies,
@@ -7,11 +8,10 @@ import {
 } from "../lib/aiApi";
 
 type Props = {
-  estimateId: string;
-  token: string; // JWT or similar
+  estimateId: string | number;
 };
 
-export default function AiAssistantPanel({ estimateId, token }: Props) {
+export default function AiAssistantPanel({ estimateId }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +38,8 @@ export default function AiAssistantPanel({ estimateId, token }: Props) {
     }
   }
 
+  const estIdStr = String(estimateId);
+
   return (
     <div className="bg-white rounded-2xl shadow-sm p-4 flex flex-col gap-3 text-xs">
       <div className="flex items-center justify-between">
@@ -55,7 +57,7 @@ export default function AiAssistantPanel({ estimateId, token }: Props) {
           onClick={() =>
             run(
               "recommendations",
-              () => aiRecommendAssemblies(estimateId, token),
+              () => aiRecommendAssemblies(estIdStr),
               (data) => setRecommendations(data)
             )
           }
@@ -68,7 +70,7 @@ export default function AiAssistantPanel({ estimateId, token }: Props) {
           onClick={() =>
             run(
               "validation",
-              () => aiValidateEstimate(estimateId, token),
+              () => aiValidateEstimate(estIdStr),
               (data) => setValidation(data)
             )
           }
@@ -81,7 +83,7 @@ export default function AiAssistantPanel({ estimateId, token }: Props) {
           onClick={() =>
             run(
               "proposal text",
-              () => aiProposalText(estimateId, "professional", token),
+              () => aiProposalText(estIdStr, "professional"),
               (data: any) => setProposal(data.narrative)
             )
           }
@@ -94,7 +96,7 @@ export default function AiAssistantPanel({ estimateId, token }: Props) {
           onClick={() =>
             run(
               "profit analysis",
-              () => aiProfitAnalysis(estimateId, token),
+              () => aiProfitAnalysis(estIdStr),
               (data) => setProfit(data)
             )
           }

@@ -1,3 +1,4 @@
+// src/pages/EstimateWizard.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -8,10 +9,7 @@ import {
   getProposalPdfUrl,
 } from "../lib/api";
 import DownloadPdfButton from "../components/DownloadPdfButton";
-
-//  AI Assistant Panel (Sprint 6)
 import AiAssistantPanel from "../components/AiAssistantPanel";
-import { useAuth } from "../hooks/useAuth";
 
 type AssemblyItem = {
   id: string;
@@ -71,10 +69,6 @@ export default function EstimateWizard() {
 
   const navigate = useNavigate();
 
-  // Auth token for AI routes
-  const { token } = useAuth();
-
-  // Load assemblies + projects on mount
   useEffect(() => {
     setError("");
     (async () => {
@@ -98,7 +92,6 @@ export default function EstimateWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep state uppercase
   function handleStateChange(v: string) {
     setState(v.toUpperCase());
   }
@@ -125,7 +118,7 @@ export default function EstimateWizard() {
 
     try {
       const est = (await createEstimate({
-        projectId: activeProjectId, // 🔐 project owned by current user
+        projectId: activeProjectId,
         location: { zip, state },
         lines: [{ assemblyId, inputs: { area } }],
       })) as Estimate;
@@ -134,7 +127,6 @@ export default function EstimateWizard() {
         throw new Error("Estimate was created but no id was returned.");
       }
 
-      // Stay on this page so the AI panel + result are visible
       setEstimate(est);
     } catch (e: any) {
       const msg =
@@ -267,12 +259,10 @@ export default function EstimateWizard() {
       {/* Result + AI Assistant */}
       {estimate && (
         <div className="rounded-2xl bg-white p-4 shadow-sm">
-          {/*  AI Assistant Panel */}
-          {token && (
-            <div className="mb-6">
-              <AiAssistantPanel estimateId={estimate.id} token={token} />
-            </div>
-          )}
+          {/* AI Assistant Panel – always visible when estimate exists */}
+          <div className="mb-6">
+            <AiAssistantPanel estimateId={estimate.id} />
+          </div>
 
           <h3 className="font-medium mb-2">Result</h3>
           <div className="text-sm">
