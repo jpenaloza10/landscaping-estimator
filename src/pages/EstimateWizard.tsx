@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   createEstimate,
   listAssemblies,
@@ -9,7 +9,7 @@ import {
 } from "../lib/api";
 import DownloadPdfButton from "../components/DownloadPdfButton";
 
-// AI Assistant Panel (Sprint 6)
+//  AI Assistant Panel (Sprint 6)
 import AiAssistantPanel from "../components/AiAssistantPanel";
 import { useAuth } from "../hooks/useAuth";
 
@@ -134,10 +134,8 @@ export default function EstimateWizard() {
         throw new Error("Estimate was created but no id was returned.");
       }
 
+      // Stay on this page so the AI panel + result are visible
       setEstimate(est);
-
-      // Navigate to proposal page; AI panel still visible on this screen
-      navigate(`/proposals/${est.id}`);
     } catch (e: any) {
       const msg =
         e?.payload?.error ||
@@ -269,7 +267,7 @@ export default function EstimateWizard() {
       {/* Result + AI Assistant */}
       {estimate && (
         <div className="rounded-2xl bg-white p-4 shadow-sm">
-          {/* AI Assistant Panel */}
+          {/*  AI Assistant Panel */}
           {token && (
             <div className="mb-6">
               <AiAssistantPanel estimateId={estimate.id} token={token} />
@@ -319,9 +317,9 @@ export default function EstimateWizard() {
             </div>
           )}
 
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
             <a
-              className="inline-block underline text-sm"
+              className="inline-block underline"
               href={getProposalPdfUrl(String(estimate.id))}
               target="_blank"
               rel="noreferrer"
@@ -329,6 +327,12 @@ export default function EstimateWizard() {
               Open Proposal PDF
             </a>
             <DownloadPdfButton estimateId={estimate.id} />
+            <Link
+              to={`/proposals/${estimate.id}`}
+              className="inline-block underline text-slate-700"
+            >
+              View Proposal Page
+            </Link>
           </div>
         </div>
       )}
