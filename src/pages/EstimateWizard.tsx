@@ -1,57 +1,17 @@
 // src/pages/EstimateWizard.tsx
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   createEstimate,
   listAssemblies,
   getProjects,
-  type Project,
   getProposalPdfUrl,
+  type Project,
+  type Assembly,
+  type Estimate,
 } from "../lib/api";
 import DownloadPdfButton from "../components/DownloadPdfButton";
 import AiAssistantPanel from "../components/AiAssistantPanel";
-
-type AssemblyItem = {
-  id: string;
-  name: string;
-  unit: string;
-  unitCost: number;
-  qtyFormula: string;
-};
-
-type Assembly = {
-  id: string;
-  name: string;
-  unit?: string;
-  wastePct?: number;
-  items: AssemblyItem[];
-};
-
-type EstimateItem = {
-  name: string;
-  unit: string;
-  unitCost: number;
-  qty: number;
-  extended: number;
-};
-
-type EstimateLine = {
-  id: string;
-  assemblyId: string;
-  inputs: Record<string, number>;
-  items: EstimateItem[];
-  lineTotal: number;
-  notes?: string;
-};
-
-type Estimate = {
-  id: string;
-  subtotal: number;
-  tax: number;
-  total: number;
-  lines: EstimateLine[];
-  location?: any;
-};
 
 export default function EstimateWizard() {
   const [assemblies, setAssemblies] = useState<Assembly[]>([]);
@@ -67,21 +27,19 @@ export default function EstimateWizard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const navigate = useNavigate();
-
+  // Load assemblies + projects on mount
   useEffect(() => {
     setError("");
     (async () => {
       try {
-        const [assembliesData, projectsData] = await Promise.all([
-          listAssemblies(),
-          getProjects(),
-        ]);
+        const [assembliesData, projectsData] = await Promise.all<
+          [Assembly[], Project[]]
+        >([listAssemblies(), getProjects()]);
 
-        setAssemblies(assembliesData || []);
+        setAssemblies(assembliesData ?? []);
         if (assembliesData?.length) setAssemblyId(assembliesData[0].id);
 
-        setProjects(projectsData || []);
+        setProjects(projectsData ?? []);
         if (projectsData?.length && activeProjectId == null) {
           setActiveProjectId(projectsData[0].id);
         }
@@ -117,11 +75,11 @@ export default function EstimateWizard() {
     setEstimate(null);
 
     try {
-      const est = (await createEstimate({
+      const est = await createEstimate({
         projectId: activeProjectId,
         location: { zip, state },
         lines: [{ assemblyId, inputs: { area } }],
-      })) as Estimate;
+      });
 
       if (!est?.id) {
         throw new Error("Estimate was created but no id was returned.");
@@ -130,7 +88,7 @@ export default function EstimateWizard() {
       setEstimate(est);
     } catch (e: any) {
       const msg =
-        e?.payload?.error ||
+        (e?.payload as any)?.error ||
         e?.message ||
         "Failed to create estimate";
       setError(msg);

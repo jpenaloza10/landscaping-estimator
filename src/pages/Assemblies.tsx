@@ -1,18 +1,26 @@
 import { useEffect, useState } from "react";
-import { listAssemblies, listTemplates } from "../lib/api";
+import {
+  listAssemblies,
+  listTemplates,
+  type Assembly,
+  type Template,
+} from "../lib/api";
 
 export default function Assemblies() {
-  const [assemblies, setAssemblies] = useState<any[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [assemblies, setAssemblies] = useState<Assembly[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([listAssemblies(), listTemplates()])
+    Promise.all<[Assembly[], Template[]]>([
+      listAssemblies(),
+      listTemplates(),
+    ])
       .then(([assembliesData, templatesData]) => {
-        setAssemblies(assembliesData);
-        setTemplates(templatesData);
+        setAssemblies(assembliesData ?? []);
+        setTemplates(templatesData ?? []);
       })
       .catch((err) => {
         console.error(err);
@@ -22,7 +30,11 @@ export default function Assemblies() {
   }, []);
 
   if (loading) {
-    return <div className="p-4 text-sm text-slate-600">Loading assemblies...</div>;
+    return (
+      <div className="p-4 text-sm text-slate-600">
+        Loading assemblies...
+      </div>
+    );
   }
 
   if (error) {
@@ -36,7 +48,9 @@ export default function Assemblies() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold">Assemblies</h2>
           {/* Future Add Button */}
-          <button className="text-sm rounded bg-slate-900 px-3 py-1 text-white">+ Add</button>
+          <button className="text-sm rounded bg-slate-900 px-3 py-1 text-white">
+            + Add
+          </button>
         </div>
 
         {assemblies.length === 0 ? (
@@ -47,10 +61,13 @@ export default function Assemblies() {
               <li key={a.id} className="py-2 border-b last:border-0">
                 <div className="font-medium">
                   {a.name}{" "}
-                  <span className="text-xs text-slate-500">({a.unit || "unit"})</span>
+                  <span className="text-xs text-slate-500">
+                    ({a.unit || "unit"})
+                  </span>
                 </div>
                 <div className="text-xs text-slate-500">
-                  {(a.items?.length || 0)} items • waste {Math.round((a.wastePct || 0) * 100)}%
+                  {(a.items?.length || 0)} items • waste{" "}
+                  {Math.round((a.wastePct || 0) * 100)}%
                 </div>
               </li>
             ))}

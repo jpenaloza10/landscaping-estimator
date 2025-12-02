@@ -5,29 +5,21 @@ import {
   createExpense as createExpenseApi,
   getProjects,
   authedFetch,
-  apiRaw,         // ⬅️ NEW: for authenticated CSV/PDF downloads
+  apiRaw,               // <- make sure this is exported from lib/api
   type Project,
+  type BudgetReport,
+  type Expense,
 } from "../lib/api";
 import ReceiptUpload from "../components/ReceiptUpload";
 
 const CATEGORIES = ["MATERIAL", "LABOR", "EQUIPMENT", "SUBCONTRACTOR", "OTHER"] as const;
-
-type BudgetReport = {
-  hasBaseline: boolean;
-  baselineTotal: number;
-  totalActual: number;
-  totalRemaining: number;
-  byCategory: Record<string, number>;
-  actualByCategory: Record<string, number>;
-  remainingByCategory: Record<string, number>;
-};
 
 export default function ExpensesPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
 
   const [report, setReport] = useState<BudgetReport | null>(null);
-  const [expenses, setExpenses] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [form, setForm] = useState({
     category: "MATERIAL",
     vendor: "",
@@ -42,7 +34,7 @@ export default function ExpensesPage() {
     return getBudgetReport(projectId);
   }
 
-  async function fetchExpensesForProject(projectId: number) {
+  async function fetchExpensesForProject(projectId: number): Promise<Expense[]> {
     return listExpenses(projectId);
   }
 
@@ -68,7 +60,7 @@ export default function ExpensesPage() {
   async function refresh(projectId: number) {
     setLoading(true);
     try {
-      const [r, e] = await Promise.all([
+      const [r, e] = await Promise.all<[BudgetReport, Expense[]]>([
         fetchBudgetReportForProject(projectId),
         fetchExpensesForProject(projectId),
       ]);
@@ -284,13 +276,18 @@ export default function ExpensesPage() {
             />
 
             {/* Manual expense form */}
-            <form onSubmit={onSubmit} className="grid gap-2 sm:grid-cols-5 items-end text-xs">
+            <form
+              onSubmit={onSubmit}
+              className="grid gap-2 sm:grid-cols-5 items-end text-xs"
+            >
               <div className="sm:col-span-1">
                 <label className="block mb-1 font-medium">Category</label>
                 <select
                   className="w-full border rounded p-2"
                   value={form.category}
-                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, category: e.target.value }))
+                  }
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c}>{c}</option>
@@ -302,7 +299,9 @@ export default function ExpensesPage() {
                 <input
                   className="w-full border rounded p-2"
                   value={form.vendor}
-                  onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, vendor: e.target.value }))
+                  }
                 />
               </div>
               <div className="sm:col-span-1">
@@ -312,7 +311,9 @@ export default function ExpensesPage() {
                   step="0.01"
                   className="w-full border rounded p-2"
                   value={form.amount}
-                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, amount: e.target.value }))
+                  }
                   required
                 />
               </div>
@@ -322,7 +323,9 @@ export default function ExpensesPage() {
                   type="date"
                   className="w-full border rounded p-2"
                   value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, date: e.target.value }))
+                  }
                   required
                 />
               </div>
@@ -340,7 +343,9 @@ export default function ExpensesPage() {
                 <input
                   className="w-full border rounded p-2"
                   value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, description: e.target.value }))
+                  }
                 />
               </div>
             </form>
@@ -350,9 +355,14 @@ export default function ExpensesPage() {
               <h3 className="font-semibold text-sm mb-2">Expenses</h3>
               <div className="space-y-1 text-xs">
                 {expenses.map((exp) => (
-                  <div key={exp.id} className="flex justify-between gap-2 border-b pb-1">
+                  <div
+                    key={exp.id}
+                    className="flex justify-between gap-2 border-b pb-1"
+                  >
                     <div className="flex flex-col">
-                      <span className="font-medium">{exp.vendor || exp.category}</span>
+                      <span className="font-medium">
+                        {exp.vendor || exp.category}
+                      </span>
                       <span className="text-slate-500">
                         {exp.description || "No description"}
                       </span>
