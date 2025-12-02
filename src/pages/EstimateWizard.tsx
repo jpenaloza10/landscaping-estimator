@@ -6,12 +6,46 @@ import {
   listAssemblies,
   getProjects,
   getProposalPdfUrl,
-  type Project,
-  type Assembly,
-  type Estimate,
 } from "../lib/api";
 import DownloadPdfButton from "../components/DownloadPdfButton";
 import AiAssistantPanel from "../components/AiAssistantPanel";
+
+// Local type definitions (since ../lib/api doesn't export these types)
+export type Project = {
+  id: number;
+  name: string;
+};
+
+export type Assembly = {
+  id: string | number;
+  name: string;
+  unit?: string | null;
+  items?: unknown[]; // only used for .length in this component
+  wastePct?: number | null;
+};
+
+export type EstimateItem = {
+  name: string;
+  qty: number;
+  unit: string;
+  unitCost: number;
+  extended: number;
+};
+
+export type EstimateLine = {
+  id?: string | number;
+  assemblyId: string | number;
+  items?: EstimateItem[];
+  lineTotal?: number;
+};
+
+export type Estimate = {
+  id: string | number;
+  subtotal?: number;
+  tax?: number;
+  total?: number;
+  lines?: EstimateLine[];
+};
 
 export default function EstimateWizard() {
   const [assemblies, setAssemblies] = useState<Assembly[]>([]);
@@ -32,12 +66,16 @@ export default function EstimateWizard() {
     setError("");
     (async () => {
       try {
-        const [assembliesData, projectsData] = await Promise.all<
-          [Assembly[], Project[]]
-        >([listAssemblies(), getProjects()]);
+        const [assembliesData, projectsData] = await Promise.all([
+          listAssemblies() as Promise<Assembly[]>,
+          getProjects() as Promise<Project[]>,
+        ]);
 
         setAssemblies(assembliesData ?? []);
-        if (assembliesData?.length) setAssemblyId(assembliesData[0].id);
+        if (assembliesData?.length) {
+          // Ensure we store assemblyId as a string for the <select>
+          setAssemblyId(String(assembliesData[0].id));
+        }
 
         setProjects(projectsData ?? []);
         if (projectsData?.length && activeProjectId == null) {
@@ -55,7 +93,8 @@ export default function EstimateWizard() {
   }
 
   const selectedAssembly = useMemo(
-    () => assemblies.find((a) => a.id === assemblyId),
+    () =>
+      assemblies.find((a) => String(a.id) === String(assemblyId)) ?? null,
     [assemblies, assemblyId]
   );
 
@@ -75,11 +114,11 @@ export default function EstimateWizard() {
     setEstimate(null);
 
     try {
-      const est = await createEstimate({
+      const est = (await createEstimate({
         projectId: activeProjectId,
         location: { zip, state },
         lines: [{ assemblyId, inputs: { area } }],
-      });
+      })) as Estimate;
 
       if (!est?.id) {
         throw new Error("Estimate was created but no id was returned.");
@@ -106,14 +145,14 @@ export default function EstimateWizard() {
     <div className="grid gap-4">
       {/* Wizard input card */}
       <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <h2 className="font-semibold mb-3">Estimate Wizard</h2>
+        <h2 className="mb-3 font-semibold">Estimate Wizard</h2>
 
         {/* Project selector */}
         <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
           <label className="flex items-center gap-2">
             <span className="font-medium">Project</span>
             <select
-              className="border rounded px-2 py-1"
+              className="rounded border px-2 py-1"
               value={activeProjectId ?? ""}
               onChange={(e) => {
                 const v = e.target.value;
@@ -144,12 +183,12 @@ export default function EstimateWizard() {
           <label className="text-sm">
             Assembly
             <select
-              className="mt-1 w-full border rounded p-2"
+              className="mt-1 w-full rounded border p-2"
               value={assemblyId}
               onChange={(e) => setAssemblyId(e.target.value)}
             >
               {assemblies.map((a) => (
-                <option key={a.id} value={a.id}>
+                <option key={a.id} value={String(a.id)}>
                   {a.name}
                 </option>
               ))}
@@ -171,13 +210,13 @@ export default function EstimateWizard() {
           <label className="text-sm">
             Area (sqft)
             <input
-              className="mt-1 w-full border rounded p-2"
+              className="mt-1 w-full rounded border p-2"
               type="number"
               min={0}
               value={area}
               onChange={(e) => setArea(Math.max(0, Number(e.target.value)))}
             />
-            <span className="block mt-1 text-xs text-slate-500">
+            <span className="mt-1 block text-xs text-slate-500">
               Enter the measured area for this assembly line.
             </span>
           </label>
@@ -185,7 +224,7 @@ export default function EstimateWizard() {
           <label className="text-sm">
             State
             <input
-              className="mt-1 w-full border rounded p-2"
+              className="mt-1 w-full rounded border p-2"
               value={state}
               onChange={(e) => handleStateChange(e.target.value)}
               placeholder="CA"
@@ -195,7 +234,7 @@ export default function EstimateWizard() {
           <label className="text-sm">
             ZIP
             <input
-              className="mt-1 w-full border rounded p-2"
+              className="mt-1 w-full rounded border p-2"
               value={zip}
               onChange={(e) => setZip(e.target.value)}
               placeholder="94103"
@@ -206,7 +245,7 @@ export default function EstimateWizard() {
         <button
           onClick={handleCreate}
           disabled={!canCreate}
-          className="mt-4 rounded bg-slate-900 text-white px-3 py-2 disabled:opacity-50"
+          className="mt-4 rounded bg-slate-900 px-3 py-2 text-white disabled:opacity-50"
         >
           {loading ? "Creating..." : "Create Estimate"}
         </button>
@@ -222,7 +261,7 @@ export default function EstimateWizard() {
             <AiAssistantPanel estimateId={estimate.id} />
           </div>
 
-          <h3 className="font-medium mb-2">Result</h3>
+          <h3 className="mb-2 font-medium">Result</h3>
           <div className="text-sm">
             <div>
               Subtotal:{" "}
@@ -238,26 +277,30 @@ export default function EstimateWizard() {
 
           {!!estimate.lines?.length && (
             <div className="mt-4">
-              <h4 className="font-medium mb-2 text-sm">Line Items</h4>
+              <h4 className="mb-2 text-sm font-medium">Line Items</h4>
               <ul className="text-sm">
                 {estimate.lines.map((line) => (
-                  <li key={line.id ?? line.assemblyId} className="border-t py-2">
+                  <li
+                    key={String(line.id ?? line.assemblyId)}
+                    className="border-t py-2"
+                  >
                     <div className="text-slate-700">
                       Assembly:{" "}
                       <span className="font-medium">{line.assemblyId}</span>
                     </div>
-                    <ul className="pl-4 list-disc">
+                    <ul className="list-disc pl-4">
                       {line.items?.map((it, idx) => (
                         <li key={idx} className="text-slate-600">
                           {it.name}: {it.qty.toFixed(2)} {it.unit} @ $
-                          {it.unitCost.toFixed(2)} = $
-                          {it.extended.toFixed(2)}
+                          {it.unitCost.toFixed(2)} = ${it.extended.toFixed(2)}
                         </li>
                       ))}
                     </ul>
                     <div className="mt-1">
                       Line total:{" "}
-                      <strong>${Number(line.lineTotal ?? 0).toFixed(2)}</strong>
+                      <strong>
+                        ${Number(line.lineTotal ?? 0).toFixed(2)}
+                      </strong>
                     </div>
                   </li>
                 ))}
@@ -277,7 +320,7 @@ export default function EstimateWizard() {
             <DownloadPdfButton estimateId={estimate.id} />
             <Link
               to={`/proposals/${estimate.id}`}
-              className="inline-block underline text-slate-700"
+              className="inline-block text-slate-700 underline"
             >
               View Proposal Page
             </Link>

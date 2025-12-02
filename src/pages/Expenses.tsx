@@ -5,14 +5,43 @@ import {
   createExpense as createExpenseApi,
   getProjects,
   authedFetch,
-  apiRaw,               // <- make sure this is exported from lib/api
-  type Project,
-  type BudgetReport,
-  type Expense,
+  apiRaw, // <- make sure this is exported from lib/api
 } from "../lib/api";
 import ReceiptUpload from "../components/ReceiptUpload";
 
-const CATEGORIES = ["MATERIAL", "LABOR", "EQUIPMENT", "SUBCONTRACTOR", "OTHER"] as const;
+const CATEGORIES = [
+  "MATERIAL",
+  "LABOR",
+  "EQUIPMENT",
+  "SUBCONTRACTOR",
+  "OTHER",
+] as const;
+type CategoryKey = (typeof CATEGORIES)[number];
+
+// Local type definitions (since ../lib/api doesn't export these types here)
+export type Project = {
+  id: number;
+  name: string;
+};
+
+export type BudgetReport = {
+  hasBaseline: boolean;
+  baselineTotal: number;
+  totalActual: number;
+  totalRemaining: number;
+  byCategory?: Partial<Record<CategoryKey, number>>;
+  actualByCategory?: Partial<Record<CategoryKey, number>>;
+  remainingByCategory?: Partial<Record<CategoryKey, number>>;
+};
+
+export type Expense = {
+  id: string | number;
+  category: string;
+  vendor?: string | null;
+  description?: string | null;
+  amount: number;
+  date: string;
+};
 
 export default function ExpensesPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -30,12 +59,16 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
 
   // --- Fetchers using authed API helpers ---
-  async function fetchBudgetReportForProject(projectId: number): Promise<BudgetReport> {
-    return getBudgetReport(projectId);
+  async function fetchBudgetReportForProject(
+    projectId: number
+  ): Promise<BudgetReport> {
+    return getBudgetReport(projectId) as Promise<BudgetReport>;
   }
 
-  async function fetchExpensesForProject(projectId: number): Promise<Expense[]> {
-    return listExpenses(projectId);
+  async function fetchExpensesForProject(
+    projectId: number
+  ): Promise<Expense[]> {
+    return listExpenses(projectId) as Promise<Expense[]>;
   }
 
   async function createExpense(payload: {
@@ -75,7 +108,7 @@ export default function ExpensesPage() {
   useEffect(() => {
     (async () => {
       try {
-        const ps = await getProjects();
+        const ps = (await getProjects()) as Project[];
         setProjects(ps);
         if (ps.length > 0) {
           const firstId = ps[0].id;
@@ -117,10 +150,12 @@ export default function ExpensesPage() {
   }
 
   // AI Categorization function (authed)
-  async function handleAICategorize(id: string) {
+  async function handleAICategorize(id: string | number) {
     if (activeProjectId == null) return;
     try {
-      await authedFetch(`/api/expenses/${id}/auto-categorize`, { method: "POST" });
+      await authedFetch(`/api/expenses/${id}/auto-categorize`, {
+        method: "POST",
+      });
       await refresh(activeProjectId);
     } catch (err) {
       console.error("AI categorization failed", err);
@@ -167,11 +202,11 @@ export default function ExpensesPage() {
   return (
     <div className="grid gap-6 lg:grid-cols-[2fr,3fr]">
       {/* Export toolbar + project selector */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm lg:col-span-2 flex flex-wrap items-center gap-4">
+      <div className="lg:col-span-2 flex flex-wrap items-center gap-4 rounded-2xl bg-white p-4 shadow-sm">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold">Project</span>
           <select
-            className="border rounded px-2 py-1 text-sm"
+            className="rounded border px-2 py-1 text-sm"
             value={activeProjectId ?? ""}
             onChange={(e) => {
               const v = e.target.value;
@@ -194,7 +229,7 @@ export default function ExpensesPage() {
             <button
               type="button"
               onClick={handleDownloadExpensesCsv}
-              className="text-xs underline text-blue-600 hover:text-blue-800"
+              className="text-xs text-blue-600 underline hover:text-blue-800"
             >
               Download Expenses CSV
             </button>
@@ -202,7 +237,7 @@ export default function ExpensesPage() {
             <button
               type="button"
               onClick={handleDownloadBudgetCsv}
-              className="text-xs underline text-blue-600 hover:text-blue-800"
+              className="text-xs text-blue-600 underline hover:text-blue-800"
             >
               Download Budget CSV
             </button>
@@ -211,8 +246,8 @@ export default function ExpensesPage() {
       </div>
 
       {/* Left: Budget snapshot */}
-      <section className="bg-white rounded-2xl p-4 shadow-sm">
-        <h2 className="font-semibold mb-2">
+      <section className="rounded-2xl bg-white p-4 shadow-sm">
+        <h2 className="mb-2 font-semibold">
           Budget Snapshot {currentProject ? `– ${currentProject.name}` : ""}
         </h2>
         {activeProjectId == null && (
@@ -225,27 +260,39 @@ export default function ExpensesPage() {
         )}
         {activeProjectId != null && report && report.hasBaseline && !loading && (
           <>
-            <p className="text-sm mb-2">
+            <p className="mb-2 text-sm">
               Baseline: <strong>${report.baselineTotal.toFixed(2)}</strong>
             </p>
-            <p className="text-sm mb-4">
-              Actual: <strong>${report.totalActual.toFixed(2)}</strong> • Remaining:{" "}
-              <strong className={report.totalRemaining < 0 ? "text-red-600" : ""}>
+            <p className="mb-4 text-sm">
+              Actual: <strong>${report.totalActual.toFixed(2)}</strong> •
+              Remaining:{" "}
+              <strong
+                className={
+                  report.totalRemaining < 0 ? "text-red-600" : ""
+                }
+              >
                 ${report.totalRemaining.toFixed(2)}
               </strong>
             </p>
             <div className="grid gap-2 text-xs">
               {CATEGORIES.map((cat) => {
-                const b = report.byCategory?.[cat] || 0;
-                const a = report.actualByCategory?.[cat] || 0;
-                const rem = report.remainingByCategory?.[cat] || 0;
+                const b = report.byCategory?.[cat] ?? 0;
+                const a = report.actualByCategory?.[cat] ?? 0;
+                const rem = report.remainingByCategory?.[cat] ?? 0;
                 if (b === 0 && a === 0) return null;
                 return (
-                  <div key={cat} className="flex justify-between items-center">
+                  <div
+                    key={cat}
+                    className="flex items-center justify-between"
+                  >
                     <span className="font-medium">{cat}</span>
                     <span>Budget: ${b.toFixed(0)}</span>
                     <span>Actual: ${a.toFixed(0)}</span>
-                    <span className={rem < 0 ? "text-red-600" : "text-slate-700"}>
+                    <span
+                      className={
+                        rem < 0 ? "text-red-600" : "text-slate-700"
+                      }
+                    >
                       Rem: ${rem.toFixed(0)}
                     </span>
                   </div>
@@ -262,7 +309,7 @@ export default function ExpensesPage() {
       </section>
 
       {/* Right: Receipt upload + Expense entry + list */}
-      <section className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-4">
+      <section className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm">
         {activeProjectId == null ? (
           <p className="text-sm text-slate-500">
             Create a project first to upload receipts and add expenses.
@@ -278,12 +325,12 @@ export default function ExpensesPage() {
             {/* Manual expense form */}
             <form
               onSubmit={onSubmit}
-              className="grid gap-2 sm:grid-cols-5 items-end text-xs"
+              className="grid items-end gap-2 text-xs sm:grid-cols-5"
             >
               <div className="sm:col-span-1">
-                <label className="block mb-1 font-medium">Category</label>
+                <label className="mb-1 block font-medium">Category</label>
                 <select
-                  className="w-full border rounded p-2"
+                  className="w-full rounded border p-2"
                   value={form.category}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, category: e.target.value }))
@@ -295,9 +342,9 @@ export default function ExpensesPage() {
                 </select>
               </div>
               <div className="sm:col-span-1">
-                <label className="block mb-1 font-medium">Vendor</label>
+                <label className="mb-1 block font-medium">Vendor</label>
                 <input
-                  className="w-full border rounded p-2"
+                  className="w-full rounded border p-2"
                   value={form.vendor}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, vendor: e.target.value }))
@@ -305,11 +352,11 @@ export default function ExpensesPage() {
                 />
               </div>
               <div className="sm:col-span-1">
-                <label className="block mb-1 font-medium">Amount</label>
+                <label className="mb-1 block font-medium">Amount</label>
                 <input
                   type="number"
                   step="0.01"
-                  className="w-full border rounded p-2"
+                  className="w-full rounded border p-2"
                   value={form.amount}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, amount: e.target.value }))
@@ -318,10 +365,10 @@ export default function ExpensesPage() {
                 />
               </div>
               <div className="sm:col-span-1">
-                <label className="block mb-1 font-medium">Date</label>
+                <label className="mb-1 block font-medium">Date</label>
                 <input
                   type="date"
-                  className="w-full border rounded p-2"
+                  className="w-full rounded border p-2"
                   value={form.date}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, date: e.target.value }))
@@ -332,16 +379,16 @@ export default function ExpensesPage() {
               <div className="sm:col-span-1">
                 <button
                   type="submit"
-                  className="w-full rounded bg-slate-900 text-white px-3 py-2"
+                  className="w-full rounded bg-slate-900 px-3 py-2 text-white"
                   disabled={activeProjectId == null}
                 >
                   Add
                 </button>
               </div>
               <div className="sm:col-span-5">
-                <label className="block mb-1 font-medium">Description</label>
+                <label className="mb-1 block font-medium">Description</label>
                 <input
-                  className="w-full border rounded p-2"
+                  className="w-full rounded border p-2"
                   value={form.description}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, description: e.target.value }))
@@ -351,8 +398,8 @@ export default function ExpensesPage() {
             </form>
 
             {/* Expense list */}
-            <div className="border-t pt-3 flex-1 overflow-auto">
-              <h3 className="font-semibold text-sm mb-2">Expenses</h3>
+            <div className="flex-1 border-t pt-3 overflow-auto">
+              <h3 className="mb-2 text-sm font-semibold">Expenses</h3>
               <div className="space-y-1 text-xs">
                 {expenses.map((exp) => (
                   <div
@@ -369,12 +416,12 @@ export default function ExpensesPage() {
                     </div>
                     <div className="text-right">
                       <div>${Number(exp.amount).toFixed(2)}</div>
-                      <div className="text-slate-500 flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-2 text-slate-500">
                         {exp.category} • {String(exp.date).slice(0, 10)}
                         {/* AI Categorize button */}
                         <button
                           onClick={() => handleAICategorize(exp.id)}
-                          className="text-[10px] border rounded px-2 py-1 hover:bg-slate-100"
+                          className="rounded border px-2 py-1 text-[10px] hover:bg-slate-100"
                         >
                           Categorize
                         </button>

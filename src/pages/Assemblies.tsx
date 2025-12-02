@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
-import {
-  listAssemblies,
-  listTemplates,
-  type Assembly,
-  type Template,
-} from "../lib/api";
+import { listAssemblies, listTemplates } from "../lib/api";
+
+// Local type definitions since ../lib/api does not export these
+export type Assembly = {
+  id: string | number;
+  name: string;
+  unit?: string | null;
+  items?: unknown[]; // only used for .length in this file
+  wastePct?: number | null;
+};
+
+export type Template = {
+  id: string | number;
+  name: string;
+  lines?: unknown[]; // only used for .length in this file
+};
 
 export default function Assemblies() {
   const [assemblies, setAssemblies] = useState<Assembly[]>([]);
@@ -14,9 +24,9 @@ export default function Assemblies() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all<[Assembly[], Template[]]>([
-      listAssemblies(),
-      listTemplates(),
+    Promise.all([
+      listAssemblies() as Promise<Assembly[]>,
+      listTemplates() as Promise<Template[]>,
     ])
       .then(([assembliesData, templatesData]) => {
         setAssemblies(assembliesData ?? []);
@@ -45,10 +55,10 @@ export default function Assemblies() {
     <div className="grid gap-6">
       {/* Assemblies Section */}
       <section className="rounded-2xl bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3 flex items-center justify-between">
           <h2 className="font-semibold">Assemblies</h2>
           {/* Future Add Button */}
-          <button className="text-sm rounded bg-slate-900 px-3 py-1 text-white">
+          <button className="rounded bg-slate-900 px-3 py-1 text-sm text-white">
             + Add
           </button>
         </div>
@@ -58,7 +68,7 @@ export default function Assemblies() {
         ) : (
           <ul className="text-sm">
             {assemblies.map((a) => (
-              <li key={a.id} className="py-2 border-b last:border-0">
+              <li key={a.id} className="border-b py-2 last:border-0">
                 <div className="font-medium">
                   {a.name}{" "}
                   <span className="text-xs text-slate-500">
@@ -77,7 +87,7 @@ export default function Assemblies() {
 
       {/* Templates Section */}
       <section className="rounded-2xl bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3 flex items-center justify-between">
           <h2 className="font-semibold">Templates</h2>
         </div>
 
@@ -86,7 +96,7 @@ export default function Assemblies() {
         ) : (
           <ul className="text-sm">
             {templates.map((t) => (
-              <li key={t.id} className="py-2 border-b last:border-0">
+              <li key={t.id} className="border-b py-2 last:border-0">
                 <div className="font-medium">{t.name}</div>
                 <div className="text-xs text-slate-500">
                   {(t.lines?.length || 0)} lines
