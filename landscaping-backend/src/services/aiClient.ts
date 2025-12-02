@@ -1,16 +1,60 @@
 import "dotenv/config";
 
-const AI_MODEL = process.env.AI_MODEL || "gpt-4.1-mini"; // adjust to your provider
-const AI_API_KEY = process.env.AI_API_KEY || process.env.OPENAI_API_KEY;
+/**
+ * ======================================================
+ *  AI Provider Configuration (Groq-first)
+ * ======================================================
+ *
+ * Default provider: Groq (FREE)
+ * Default model:    llama-3.1-70b-versatile
+ *
+ * Environment variables you can use:
+ *
+ *  AI_API_KEY=your_groq_key
+ *  AI_PROVIDER=groq
+ *  AI_API_URL=https://api.groq.com/openai/v1/chat/completions
+ *  AI_MODEL=llama-3.1-70b-versatile
+ *
+ * Optional: OpenAI fallback
+ *  AI_PROVIDER=openai
+ *  OPENAI_API_KEY=sk-xxxx
+ *  AI_API_URL=https://api.openai.com/v1/chat/completions
+ */
+
+const PROVIDER = (process.env.AI_PROVIDER || "groq").toLowerCase();
+
+const AI_API_KEY =
+  process.env.AI_API_KEY ||
+  process.env.OPENAI_API_KEY ||
+  null;
+
+// Default URL for Groq (OpenAI-compatible API)
+const DEFAULT_GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+// Choose API URL based on provider
 const AI_API_URL =
-  process.env.AI_API_URL || "https://api.openai.com/v1/chat/completions";
+  process.env.AI_API_URL ||
+  (PROVIDER === "openai"
+    ? "https://api.openai.com/v1/chat/completions"
+    : DEFAULT_GROQ_URL);
+
+// Default model – Groq’s free & powerful Llama model
+const AI_MODEL =
+  process.env.AI_MODEL ||
+  (PROVIDER === "openai" ? "gpt-4.1-mini" : "llama-3.1-70b-versatile");
 
 if (!AI_API_KEY) {
   console.warn(
-    "[AI] Missing AI_API_KEY / OPENAI_API_KEY – AI routes will throw until configured."
+    "[AI] No AI_API_KEY or OPENAI_API_KEY found — AI routes will fail until provided."
   );
 }
 
+/**
+ * ======================================================
+ *  callAI(prompt: string)
+ * ======================================================
+ * Sends a Chat Completion request to Groq (or OpenAI fallback).
+ */
 export async function callAI(prompt: string): Promise<string> {
   if (!AI_API_KEY) {
     throw new Error("AI API key not configured");
@@ -43,13 +87,23 @@ export async function callAI(prompt: string): Promise<string> {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`AI API error: ${res.status} – ${text}`);
+    throw new Error(
+      `[AI] Provider error (${res.status}) → ${text}\nURL=${AI_API_URL}`
+    );
   }
 
   const json = await res.json();
-  const content = json.choices?.[0]?.message?.content;
+
+  // Groq uses OpenAI-compatible shape: { choices: [ { message: { content } } ] }
+  const content =
+    json.choices?.[0]?.message?.content ??
+    json.choices?.[0]?.delta?.content ??
+    null;
+
   if (typeof content !== "string") {
+    console.error("[AI] Unexpected response JSON:", JSON.stringify(json, null, 2));
     throw new Error("AI response missing content");
   }
+
   return content.trim();
 }
