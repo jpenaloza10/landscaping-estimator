@@ -93,10 +93,11 @@ export default function ExpensesPage() {
   async function refresh(projectId: number) {
     setLoading(true);
     try {
-      const [r, e] = await Promise.all<[BudgetReport, Expense[]]>([
+      const [r, e] = (await Promise.all([
         fetchBudgetReportForProject(projectId),
         fetchExpensesForProject(projectId),
-      ]);
+      ])) as [BudgetReport, Expense[]];
+
       setReport(r);
       setExpenses(e);
     } finally {
@@ -398,7 +399,7 @@ export default function ExpensesPage() {
             </form>
 
             {/* Expense list */}
-            <div className="flex-1 border-t pt-3 overflow-auto">
+            <div className="flex-1 overflow-auto border-t pt-3">
               <h3 className="mb-2 text-sm font-semibold">Expenses</h3>
               <div className="space-y-1 text-xs">
                 {expenses.map((exp) => (

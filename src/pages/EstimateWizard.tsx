@@ -258,7 +258,7 @@ export default function EstimateWizard() {
         <div className="rounded-2xl bg-white p-4 shadow-sm">
           {/* AI Assistant Panel – always visible when estimate exists */}
           <div className="mb-6">
-            <AiAssistantPanel estimateId={estimate.id} />
+            <AiAssistantPanel estimateId={String(estimate.id)} />
           </div>
 
           <h3 className="mb-2 font-medium">Result</h3>
@@ -317,7 +317,7 @@ export default function EstimateWizard() {
             >
               Open Proposal PDF
             </a>
-            <DownloadPdfButton estimateId={estimate.id} />
+            <DownloadPdfButton estimateId={String(estimate.id)} />
             <Link
               to={`/proposals/${estimate.id}`}
               className="inline-block text-slate-700 underline"
