@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createEstimate, listAssemblies, getProjects, type Project } from "../lib/api";
+import {
+  createEstimate,
+  listAssemblies,
+  getProjects,
+  type Project,
+  getProposalPdfUrl,
+} from "../lib/api";
 import DownloadPdfButton from "../components/DownloadPdfButton";
 
-// 🔥 AI Assistant Panel (Sprint 6)
+// AI Assistant Panel (Sprint 6)
 import AiAssistantPanel from "../components/AiAssistantPanel";
 import { useAuth } from "../hooks/useAuth";
 
@@ -133,7 +139,6 @@ export default function EstimateWizard() {
       // Navigate to proposal page; AI panel still visible on this screen
       navigate(`/proposals/${est.id}`);
     } catch (e: any) {
-      // If backend throws "Project not found", bubble that up
       const msg =
         e?.payload?.error ||
         e?.message ||
@@ -264,7 +269,7 @@ export default function EstimateWizard() {
       {/* Result + AI Assistant */}
       {estimate && (
         <div className="rounded-2xl bg-white p-4 shadow-sm">
-          {/* 🔥 AI Assistant Panel */}
+          {/* AI Assistant Panel */}
           {token && (
             <div className="mb-6">
               <AiAssistantPanel estimateId={estimate.id} token={token} />
@@ -317,9 +322,7 @@ export default function EstimateWizard() {
           <div className="mt-3 flex items-center gap-3">
             <a
               className="inline-block underline text-sm"
-              href={`${
-                import.meta.env.VITE_API_BASE_URL
-              }/api/proposals/${estimate.id}.pdf`}
+              href={getProposalPdfUrl(String(estimate.id))}
               target="_blank"
               rel="noreferrer"
             >

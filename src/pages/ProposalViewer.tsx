@@ -5,18 +5,20 @@ import { getProposalPdfUrl } from "../lib/api";
 export default function ProposalViewer() {
   const { estimateId } = useParams<{ estimateId: string }>();
 
-  // Compute the PDF URL using the same helper used elsewhere
   const pdfUrl = useMemo(() => {
     if (!estimateId) return null;
     try {
-      return getProposalPdfUrl(estimateId);
-    } catch {
+      const url = getProposalPdfUrl(estimateId);
+      console.log("[ProposalViewer] pdfUrl =", url);
+      return url;
+    } catch (err) {
+      console.error("[ProposalViewer] getProposalPdfUrl failed:", err);
       return null;
     }
   }, [estimateId]);
 
   const [loading, setLoading] = useState(true);
-  const [fileExists, setFileExists] = useState(true);
+  const [fileExists, setFileExists] = useState<boolean | null>(null);
 
   useEffect(() => {
     async function checkPDF() {
@@ -28,8 +30,10 @@ export default function ProposalViewer() {
 
       try {
         const res = await fetch(pdfUrl, { method: "HEAD" });
-        if (!res.ok) setFileExists(false);
-      } catch {
+        console.log("[ProposalViewer] HEAD status =", res.status);
+        setFileExists(res.ok);
+      } catch (err) {
+        console.error("[ProposalViewer] HEAD failed:", err);
         setFileExists(false);
       } finally {
         setLoading(false);
@@ -62,36 +66,25 @@ export default function ProposalViewer() {
     );
   }
 
-  if (loading) {
-    return (
-      <section className="rounded-2xl bg-white p-4 shadow-sm">
-        <h2 className="font-semibold mb-3">Proposal</h2>
-        <p className="text-sm">Loading proposal...</p>
-      </section>
-    );
-  }
-
-  if (!fileExists) {
-    return (
-      <section className="rounded-2xl bg-white p-4 shadow-sm">
-        <h2 className="font-semibold mb-3">Proposal</h2>
-        <p className="text-sm text-red-600">
-          Unable to load proposal for estimate <strong>{estimateId}</strong>.
-        </p>
-        <p className="text-sm mt-2">
-          Make sure your backend route <code>/api/proposals/:estimateId.pdf</code> is
-          mounted and returning 200.
-        </p>
-      </section>
-    );
-  }
-
   return (
     <section className="rounded-2xl bg-white p-4 shadow-sm">
       <h2 className="font-semibold mb-3">Proposal</h2>
+
+      {loading && (
+        <p className="text-sm mb-2">Checking if proposal exists…</p>
+      )}
+
+      {fileExists === false && !loading && (
+        <p className="text-sm text-red-600 mb-2">
+          HEAD request failed for <code>{pdfUrl}</code>. The iframe below may still
+          show more details in the browser dev tools (Network tab).
+        </p>
+      )}
+
       <div className="h-[80vh] border rounded overflow-hidden">
         <iframe title="proposal" src={pdfUrl} className="w-full h-full" />
       </div>
+
       <div className="mt-2 text-sm">
         Can’t see it?{" "}
         <a className="underline" href={pdfUrl} target="_blank" rel="noreferrer">
