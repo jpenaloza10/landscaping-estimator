@@ -2,7 +2,7 @@
 import { Router } from "express";
 import PDFDocument from "pdfkit";
 import { prisma } from "../prisma";
-import { callAI } from "../aiClient";
+import { callAI } from "../services/aiClient";
 
 const r = Router();
 

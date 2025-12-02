@@ -14,6 +14,8 @@ import changeOrdersRouter from "./routes/changeOrders";
 import exportRouter from "./routes/export";
 import aiRouter from "./routes/ai";
 import dashboardRouter from "./routes/dashboard";
+import proposalsRouter from "./routes/proposals";
+import deliveryRouter from "./routes/delivery";
 import { prisma } from "./prisma";
 import { SafeUser } from "./types/user";
 import { signToken, auth as authMiddleware } from "./auth";
@@ -105,6 +107,8 @@ app.use("/api/export", exportRouter);
 app.use("/api/ai", aiRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/estimates", estimatesRouter);
+app.use("/api/proposals", proposalsRouter);
+app.use("/api/delivery", deliveryRouter);
 
 app.get("/api/assemblies/ping", (_req, res) => {
   res.json({ ok: true, when: new Date().toISOString() });
