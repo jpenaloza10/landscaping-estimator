@@ -27,11 +27,14 @@ export interface ApiOptions {
 }
 
 function normalizePath(path: string): string {
-  return path.startsWith("/") ? path : `/${path}`;
+  // Ensure leading slash
+  let p = path.startsWith("/") ? path : `/${path}`;
+  // Remove double slashes EXCEPT after "https://"
+  return p.replace(/([^:]\/)\/+/g, "$1");
 }
 
 /* =========================
-   Auth Token Management (Option B)
+   Auth Token Management
    ========================= */
 let authToken: string | null = null;
 
@@ -45,7 +48,6 @@ export function setAuthToken(token: string | null) {
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
-  // Lazy load from localStorage if needed
   if (!authToken) {
     authToken = localStorage.getItem("authToken");
   }
@@ -53,17 +55,19 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 }
 
 /* =========================
-   Core fetch (JSON)
+   Core JSON Fetch Wrapper
    ========================= */
 export async function api<T = unknown>(
   path: string,
   { method = "GET", body, headers = {}, signal }: ApiOptions = {}
 ): Promise<T> {
   if (!BASE_URL) {
-    throw new Error("VITE_API_URL is not set. Add it to your .env and redeploy.");
+    throw new Error("VITE_API_URL is not set. Add it to your .env");
   }
 
-  const url = `${BASE_URL}${normalizePath(path)}`;
+  const cleanPath = normalizePath(path);
+  const url = `${BASE_URL}${cleanPath}`;
+
   const authHeaders = await getAuthHeaders();
 
   const finalHeaders: HeadersInit = {
@@ -89,6 +93,7 @@ export async function api<T = unknown>(
 
   const contentType = res.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");
+
   const payload = isJson
     ? await res.json().catch(() => undefined)
     : await res.text().catch(() => "");
@@ -98,6 +103,7 @@ export async function api<T = unknown>(
       (isJson && (payload as any)?.error) ||
       (typeof payload === "string" && payload.trim()) ||
       `HTTP ${res.status}`;
+
     throw new ApiError(msg, res.status, payload);
   }
 
@@ -105,14 +111,17 @@ export async function api<T = unknown>(
 }
 
 /* =========================
-   Raw fetch helper
+   Raw fetch (non-JSON)
    ========================= */
-export async function apiRaw(path: string, init: RequestInit = {}): Promise<Response> {
-  if (!BASE_URL) {
-    throw new Error("VITE_API_URL is not set. Add it to your .env and redeploy.");
-  }
+export async function apiRaw(
+  path: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  if (!BASE_URL) throw new Error("VITE_API_URL missing");
 
-  const url = `${BASE_URL}${normalizePath(path)}`;
+  const cleanPath = normalizePath(path);
+  const url = `${BASE_URL}${cleanPath}`;
+
   const authHeaders = await getAuthHeaders();
 
   const res = await fetch(url, {
@@ -190,7 +199,7 @@ export async function createProject(input: {
 }
 
 /* =========================
-   Dashboard / Reporting
+   Dashboard
    ========================= */
 export interface DashboardSummary {
   totalProjects: number;
@@ -203,7 +212,7 @@ export interface DashboardSummary {
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  return api<DashboardSummary>("/api/dashboard/summary");
+  return api("/api/dashboard/summary");
 }
 
 export interface DashboardProjectFinancial {
@@ -222,183 +231,73 @@ export interface DashboardProjectFinancial {
 export async function getDashboardProjectsFinancial(): Promise<{
   projects: DashboardProjectFinancial[];
 }> {
-  return api<{ projects: DashboardProjectFinancial[] }>("/api/dashboard/projects");
+  return api("/api/dashboard/projects");
 }
 
 /* =========================
-   Sprint 2: Estimation Core
+   Assemblies + Estimates
    ========================= */
-export interface AssemblyItem {
-  id: string;
-  assemblyId: string;
-  name: string;
-  unit: string;
-  unitCost: number;
-  qtyFormula: string;
+export async function listAssemblies() {
+  return api("/api/assemblies");
 }
 
-export interface Assembly {
-  id: string;
-  slug: string;
-  name: string;
-  trade: string;
-  unit: string;
-  wastePct: number;
-  items: AssemblyItem[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TemplateLine {
-  id: string;
-  templateId: string;
-  assemblyId: string;
-  defaults?: Record<string, unknown> | null;
-}
-
-export interface Template {
-  id: string;
-  name: string;
-  description?: string | null;
-  lines: TemplateLine[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface EstimateItem {
-  name: string;
-  unit: string;
-  unitCost: number;
-  qty: number;
-  extended: number;
-  provider?: string;
-  source?: string;
-}
-
-export interface EstimateLine {
-  id: string;
-  estimateId: string;
-  assemblyId: string;
-  inputs: Record<string, number>;
-  items: EstimateItem[];
-  lineTotal: number;
-  notes?: string | null;
-}
-
-export interface Estimate {
-  id: string;
-  projectId: number;
-  subtotal: number;
-  tax: number;
-  total: number;
-  location?: Record<string, unknown> | null;
-  lines: EstimateLine[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export async function listAssemblies(): Promise<Assembly[]> {
-  return api<Assembly[]>("/api/assemblies");
-}
-
-export async function listTemplates(): Promise<Template[]> {
-  return api<Template[]>("/api/assemblies/templates");
+export async function listTemplates() {
+  return api("/api/assemblies/templates");
 }
 
 export async function createEstimate(payload: {
   projectId: number;
   location?: Record<string, unknown>;
   lines: Array<{ assemblyId: string; inputs: Record<string, number> }>;
-}): Promise<Estimate> {
-  return api<Estimate>("/api/estimates", { method: "POST", body: payload });
+}) {
+  return api("/api/estimates", { method: "POST", body: payload });
 }
 
-export async function getEstimate(estimateId: string): Promise<Estimate> {
-  return api<Estimate>(`/api/estimates/${encodeURIComponent(estimateId)}`);
+export async function getEstimate(estimateId: string) {
+  return api(`/api/estimates/${encodeURIComponent(estimateId)}`);
 }
 
-export async function listEstimates(projectId: number): Promise<Estimate[]> {
-  return api<Estimate[]>(`/api/projects/${projectId}/estimates`);
+export async function listEstimates(projectId: number) {
+  return api(`/api/projects/${projectId}/estimates`);
 }
 
+/* =========================
+   FIXED finalizeEstimate()
+   ========================= */
 export async function finalizeEstimate(estimateId: string): Promise<void> {
-  await api(`/api/estimates/${encodeURIComponent(estimateId)}//finalize`, {
-    method: "POST",
-  });
+  const path = normalizePath(
+    `/api/estimates/${encodeURIComponent(estimateId)}/finalize`
+  );
+
+  return api(path, { method: "POST" });
 }
 
+/* =========================
+   Proposal PDFs
+   ========================= */
 export function getProposalPdfUrl(estimateId: string): string {
-  if (!BASE_URL) throw new Error("VITE_API_URL is not set.");
+  if (!BASE_URL) throw new Error("VITE_API_URL missing");
   return `${BASE_URL}/api/proposals/${encodeURIComponent(estimateId)}.pdf`;
 }
 
 export async function downloadProposalPdf(estimateId: string): Promise<Blob> {
-  const res = await apiRaw(`/api/proposals/${encodeURIComponent(estimateId)}.pdf`, {
-    method: "GET",
-  });
+  const res = await apiRaw(`/api/proposals/${encodeURIComponent(estimateId)}.pdf`);
   return res.blob();
 }
 
 /* =========================
-   Sprint 4–5: Expense Tracking
+   Expenses + Budget
    ========================= */
-export type ExpenseCategory =
-  | "MATERIAL"
-  | "LABOR"
-  | "EQUIPMENT"
-  | "SUBCONTRACTOR"
-  | "OTHER";
-
-export interface Expense {
-  id: string;
-  projectId: number;
-  estimateId?: string | null;
-  estimateLineId?: string | null;
-  category: ExpenseCategory;
-  vendor?: string | null;
-  description?: string | null;
-  amount: number;
-  currency: string;
-  date: string;
-  receiptUrl?: string | null;
-  meta?: Record<string, unknown> | null;
-  createdById?: string | null;
-  createdAt: string;
-  updatedAt: string;
+export async function getBudgetReport(projectId: number) {
+  return api(`/api/reports/budget?projectId=${projectId}`);
 }
 
-export interface BudgetReport {
-  hasBaseline: boolean;
-  baselineTotal: number;
-  byCategory: Record<ExpenseCategory, number>;
-  actualByCategory: Record<ExpenseCategory, number>;
-  remainingByCategory: Record<ExpenseCategory, number>;
-  totalActual: number;
-  totalRemaining: number;
+export async function listExpenses(projectId: number) {
+  return api(`/api/expenses?projectId=${projectId}`);
 }
 
-export async function getBudgetReport(projectId: number): Promise<BudgetReport> {
-  return api<BudgetReport>(`/api/reports/budget?projectId=${projectId}`);
-}
-
-export async function listExpenses(projectId: number): Promise<Expense[]> {
-  return api<Expense[]>(`/api/expenses?projectId=${projectId}`);
-}
-
-export async function createExpense(input: {
-  projectId: number;
-  estimateId?: string;
-  estimateLineId?: string;
-  category: ExpenseCategory | string;
-  vendor?: string;
-  description?: string;
-  amount: number;
-  currency?: string;
-  date: string;
-  receiptUrl?: string;
-  meta?: Record<string, unknown>;
-}): Promise<Expense> {
-  return api<Expense>("/api/expenses", {
+export async function createExpense(input: any) {
+  return api("/api/expenses", {
     method: "POST",
     body: { ...input, currency: input.currency || "USD" },
   });
