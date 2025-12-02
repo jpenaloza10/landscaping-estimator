@@ -1,3 +1,4 @@
+// src/aiClient.ts
 import "dotenv/config";
 
 /**
@@ -5,15 +6,14 @@ import "dotenv/config";
  *  AI Provider Configuration (Groq-first)
  * ======================================================
  *
- * Default provider: Groq (FREE)
- * Default model:    llama-3.1-70b-versatile
+ * Default provider: Groq
+ * Default model:    llama-3.3-70b-versatile
  *
  * Environment variables you can use:
  *
  *  AI_API_KEY=your_groq_key
  *  AI_PROVIDER=groq
  *  AI_API_URL=https://api.groq.com/openai/v1/chat/completions
- *  AI_MODEL=llama-3.1-70b-versatile
  *
  * Optional: OpenAI fallback
  *  AI_PROVIDER=openai
@@ -38,10 +38,10 @@ const AI_API_URL =
     ? "https://api.openai.com/v1/chat/completions"
     : DEFAULT_GROQ_URL);
 
-// Default model – Groq’s free & powerful Llama model
+// ✅ Updated model – use a currently supported Groq model
 const AI_MODEL =
   process.env.AI_MODEL ||
-  (PROVIDER === "openai" ? "gpt-4.1-mini" : "llama-3.1-70b-versatile");
+  (PROVIDER === "openai" ? "gpt-4.1-mini" : "llama-3.3-70b-versatile");
 
 if (!AI_API_KEY) {
   console.warn(
@@ -94,14 +94,9 @@ export async function callAI(prompt: string): Promise<string> {
 
   const json = await res.json();
 
-  // Groq uses OpenAI-compatible shape: { choices: [ { message: { content } } ] }
-  const content =
-    json.choices?.[0]?.message?.content ??
-    json.choices?.[0]?.delta?.content ??
-    null;
-
+  const content = json.choices?.[0]?.message?.content;
   if (typeof content !== "string") {
-    console.error("[AI] Unexpected response JSON:", JSON.stringify(json, null, 2));
+    console.error("[AI] Unexpected response JSON:", json);
     throw new Error("AI response missing content");
   }
 
