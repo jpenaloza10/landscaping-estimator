@@ -8,7 +8,6 @@ declare module "express-serve-static-core" {
       id: string;
       email?: string | null;
       source: "custom-jwt";
-      // Include any extra fields you want to carry from the JWT:
       [k: string]: any;
     };
   }

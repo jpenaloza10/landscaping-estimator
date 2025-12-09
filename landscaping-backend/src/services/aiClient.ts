@@ -1,25 +1,5 @@
-// src/aiClient.ts
 import "dotenv/config";
 
-/**
- * ======================================================
- *  AI Provider Configuration (Groq-first)
- * ======================================================
- *
- * Default provider: Groq
- * Default model:    llama-3.3-70b-versatile
- *
- * Environment variables you can use:
- *
- *  AI_API_KEY=your_groq_key
- *  AI_PROVIDER=groq
- *  AI_API_URL=https://api.groq.com/openai/v1/chat/completions
- *
- * Optional: OpenAI fallback
- *  AI_PROVIDER=openai
- *  OPENAI_API_KEY=sk-xxxx
- *  AI_API_URL=https://api.openai.com/v1/chat/completions
- */
 
 const PROVIDER = (process.env.AI_PROVIDER || "groq").toLowerCase();
 
@@ -38,7 +18,7 @@ const AI_API_URL =
     ? "https://api.openai.com/v1/chat/completions"
     : DEFAULT_GROQ_URL);
 
-// ✅ Updated model – use a currently supported Groq model
+// Updated model – use a currently supported Groq model
 const AI_MODEL =
   process.env.AI_MODEL ||
   (PROVIDER === "openai" ? "gpt-4.1-mini" : "llama-3.3-70b-versatile");

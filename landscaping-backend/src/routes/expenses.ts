@@ -1,4 +1,3 @@
-// src/routes/expenses.ts
 import { Router, Request, Response } from "express";
 import { ExpenseCategory } from "@prisma/client";
 import { prisma } from "../prisma";
@@ -81,7 +80,7 @@ async function resolveProjectId(
   const p = await prisma.project.findFirst({
     where: {
       id,
-      user_id: userId, // 🔐 enforce ownership
+      user_id: userId, // enforce ownership
     },
   });
 

@@ -66,7 +66,7 @@ function normalizeCategoryTotals(input: unknown): CategoryTotals {
  * NOTE: projectId is a number (Prisma Project.id is Int).
  */
 export async function getProjectBudgetReport(projectId: number): Promise<BudgetReport> {
-  // Latest snapshot becomes our baseline-by-category
+  // Latest snapshot becomes baseline-by-category
   const snapshot = await prisma.budgetSnapshot.findFirst({
     where: { projectId }, // number, not string
     orderBy: { createdAt: "desc" },

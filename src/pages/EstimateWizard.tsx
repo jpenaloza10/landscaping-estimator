@@ -1,4 +1,3 @@
-// src/pages/EstimateWizard.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -10,7 +9,6 @@ import {
 import DownloadPdfButton from "../components/DownloadPdfButton";
 import AiAssistantPanel from "../components/AiAssistantPanel";
 
-// Local type definitions (since ../lib/api doesn't export these types)
 export type Project = {
   id: number;
   name: string;

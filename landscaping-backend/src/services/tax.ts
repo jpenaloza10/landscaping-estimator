@@ -26,7 +26,7 @@ function setCache(zip: string, rate: number) {
   cache.set(zip, { rate, expiresAt: now() + CACHE_TTL_MS });
 }
 
-// Simple fallback if the API has issues (adjust as needed)
+// Simple fallback if the API has issues 
 const STATE_FALLBACK: Record<string, number> = {
   CA: 0.0725, TX: 0.0625, AZ: 0.056, NV: 0.0685, WA: 0.065, OR: 0.0,
 };

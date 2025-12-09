@@ -16,7 +16,7 @@ router.post("/sign", async (req, res) => {
     const { data, error } = await supabase
       .storage
       .from("receipts")
-      .createSignedUploadUrl(fileName, { upsert: true }); // only upsert here
+      .createSignedUploadUrl(fileName, { upsert: true }); 
 
     if (error) return res.status(400).json({ error: error.message });
 

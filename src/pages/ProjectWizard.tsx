@@ -62,8 +62,7 @@ export default function ProjectWizard() {
       // Navigate after successful creation
       // Either to list:
       nav("/projects");
-      // Or, if you prefer:
-      // nav(`/projects/${project.id}`);
+    
     } catch (e: any) {
       console.error("Project create error:", e);
       setErr(e?.message ?? "Something went wrong while creating the project.");

@@ -1,4 +1,3 @@
-// src/routes/changeOrders.ts
 import { Router, Request, Response } from "express";
 import { auth as authMiddleware } from "../auth";
 import { prisma } from "../prisma";
@@ -57,7 +56,7 @@ router.post("/", async (req: Request, res: Response) => {
       estimateId == null || estimateId === "" ? undefined : String(estimateId);
 
     if (eid) {
-      // Ensure estimate belongs to this project & user (ownership in where clause)
+      // Ensure estimate belongs to this project & user 
       const estimate = await prisma.estimate.findFirst({
         where: {
           id: eid,

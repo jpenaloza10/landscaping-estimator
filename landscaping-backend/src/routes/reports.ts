@@ -1,4 +1,3 @@
-// src/routes/reports.ts
 import { Router } from "express";
 import { getProjectBudgetReport } from "../services/reports";
 import { PrismaClient } from "@prisma/client";

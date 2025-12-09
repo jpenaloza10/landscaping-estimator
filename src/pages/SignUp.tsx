@@ -21,15 +21,13 @@ export default function SignUp() {
       // Create the account via Supabase (through AuthContext)
       await signUp(email, password);
 
-      // Optional: persist the display name to the user's profile/metadata
-      // (This will no-op if there is no active session yet due to email confirmation.)
+      
       try {
         await supabase.auth.updateUser({ data: { name } });
       } catch {
         /* ignore non-fatal metadata errors */
       }
 
-      // Navigate to your first protected page
       navigate("/projects", { replace: true });
     } catch (e: any) {
       const msg = e?.message || "Sign up failed";

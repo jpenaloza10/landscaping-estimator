@@ -1,4 +1,3 @@
-// src/services/delivery.ts
 import { haversineMiles } from "./distance";
 
 type LatLng = { lat: number; lng: number };
@@ -61,5 +60,4 @@ export function estimateDelivery(
   };
 }
 
-// Optional: export config if you ever want to show it in a debug endpoint
 export const deliveryConfig = conf;

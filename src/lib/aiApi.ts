@@ -1,8 +1,6 @@
-// src/lib/aiApi.ts
 import { authedFetch } from "./api";
 
 async function postJSON<T>(path: string, body: unknown): Promise<T> {
-  // authedFetch is your api() helper that already injects Authorization
   return authedFetch<T>(path, {
     method: "POST",
     body,

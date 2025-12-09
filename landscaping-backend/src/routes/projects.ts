@@ -68,7 +68,7 @@ r.post("/", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid user id on request" });
     }
 
-    // Validate body with Zod schema you already have
+    // Validate body with Zod schema 
     const parsed = createProjectSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return res.status(400).json({
@@ -79,8 +79,27 @@ r.post("/", async (req: Request, res: Response) => {
 
     const { name, description, location } = parsed.data;
 
-    // Optional geocoding (matches what you had in index.ts)
-    const g = await geocode(location);
+    let g:
+      | {
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          postal_code?: string | null;
+          country?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
+        }
+      | null = null;
+
+    if (location) {
+      try {
+        g = await geocode(location);
+      } catch (geoErr) {
+        // Log and continue with null coordinates/address
+        console.error("[projects.post] geocode failed (non-fatal)", geoErr);
+        g = null;
+      }
+    }
 
     const project = await prisma.project.create({
       data: {

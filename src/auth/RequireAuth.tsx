@@ -14,7 +14,6 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Not authenticated → bounce to login, but remember where we came from
   if (!user) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }

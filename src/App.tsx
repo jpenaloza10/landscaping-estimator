@@ -205,7 +205,7 @@ function AppShell({ children }: { children: ReactNode }) {
 
 function LandingOrRedirect() {
   const { user, loading } = useAuth();
-  if (loading) return null; // or a spinner/skeleton
+  if (loading) return null; 
   return user ? <Navigate to="/projects" replace /> : <Login />;
 }
 

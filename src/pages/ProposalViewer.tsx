@@ -1,4 +1,3 @@
-// src/pages/ProposalViewer.tsx
 import { useParams } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { getProposalPdfUrl, finalizeEstimate } from "../lib/api";

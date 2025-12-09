@@ -2,7 +2,6 @@ import { PrismaClient, ExpenseCategory } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Decide which estimate lines map to which expense category
 function categorizeLine(assemblyName: string | null): ExpenseCategory {
   if (!assemblyName) return "MATERIAL";
   const name = assemblyName.toLowerCase();

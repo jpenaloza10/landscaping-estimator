@@ -29,34 +29,59 @@ type NominatimItem = {
 };
 
 export async function geocode(query: string): Promise<GeocodeResult | null> {
-  const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.searchParams.set("q", query);
-  url.searchParams.set("format", "json");
-  url.searchParams.set("addressdetails", "1");
-  url.searchParams.set("limit", "1");
+  if (!query || !query.trim()) {
+    return null;
+  }
 
-  const res = await fetch(url.toString(), {
-    headers: { "User-Agent": "landscaping-estimator/1.0 (+support@example.com)" }
-  });
-  if (!res.ok) return null;
+  try {
+    const url = new URL("https://nominatim.openstreetmap.org/search");
+    url.searchParams.set("q", query);
+    url.searchParams.set("format", "json");
+    url.searchParams.set("addressdetails", "1");
+    url.searchParams.set("limit", "1");
 
-  const raw = (await res.json()) as unknown;
-  if (!Array.isArray(raw) || raw.length === 0) return null;
+    const res = await fetch(url.toString(), {
+      headers: {
+        // Nominatim requires a descriptive User-Agent
+        "User-Agent": "landscaping-estimator/1.0 (+support@example.com)",
+      },
+    });
 
-  const data = raw as NominatimItem[];
-  const best = data[0];
-  const a = best.address || {};
+    if (!res.ok) {
+      // Log but don't throw; caller should treat this as "no result"
+      const body = await res.text().catch(() => "");
+      console.warn(
+        "[geocode] Nominatim HTTP error",
+        res.status,
+        res.statusText,
+        body
+      );
+      return null;
+    }
 
-  const addrLine = [a.house_number, a.road].filter(Boolean).join(" ");
-  const city = a.city || a.town || a.village || a.hamlet || null;
+    const raw = (await res.json().catch(() => null)) as unknown;
+    if (!Array.isArray(raw) || raw.length === 0) return null;
 
-  return {
-    address: addrLine || null,
-    city,
-    state: a.state || a.region || null,
-    postal_code: a.postcode || null,
-    country: a.country || null,
-    latitude: best.lat ? parseFloat(best.lat) : null,
-    longitude: best.lon ? parseFloat(best.lon) : null
-  };
+    const data = raw as NominatimItem[];
+    const best = data[0];
+    if (!best) return null;
+
+    const a = best.address || {};
+
+    const addrLine = [a.house_number, a.road].filter(Boolean).join(" ");
+    const city = a.city || a.town || a.village || a.hamlet || null;
+
+    return {
+      address: addrLine || null,
+      city,
+      state: a.state || a.region || null,
+      postal_code: a.postcode || null,
+      country: a.country || null,
+      latitude: best.lat ? parseFloat(best.lat) : null,
+      longitude: best.lon ? parseFloat(best.lon) : null,
+    };
+  } catch (err) {
+    console.error("[geocode] fetch failed", err);
+    return null;
+  }
 }

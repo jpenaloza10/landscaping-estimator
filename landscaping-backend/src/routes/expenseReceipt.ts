@@ -1,4 +1,3 @@
-// src/routes/expenseReceipt.ts
 import { Router, Request, Response } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { prisma } from "../prisma";
@@ -107,7 +106,6 @@ router.post(
           date: new Date(ocr.date || new Date()),
           receiptUrl: receiptPath,
           meta: { ocrRaw: ocr },
-          // if your schema has createdById and it's Int:
           createdById: userId,
         },
       });

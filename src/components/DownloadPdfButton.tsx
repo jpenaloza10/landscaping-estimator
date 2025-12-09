@@ -3,7 +3,7 @@ import { downloadProposalPdf, getProposalPdfUrl } from "../lib/api";
 
 type Props = {
   estimateId: string;
-  filename?: string; // optional: default -> proposal-<id>.pdf
+  filename?: string; 
 };
 
 export default function DownloadPdfButton({ estimateId, filename }: Props) {

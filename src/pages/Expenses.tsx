@@ -5,7 +5,7 @@ import {
   createExpense as createExpenseApi,
   getProjects,
   authedFetch,
-  apiRaw, // <- make sure this is exported from lib/api
+  apiRaw, 
 } from "../lib/api";
 import ReceiptUpload from "../components/ReceiptUpload";
 
@@ -18,7 +18,6 @@ const CATEGORIES = [
 ] as const;
 type CategoryKey = (typeof CATEGORIES)[number];
 
-// Local type definitions (since ../lib/api doesn't export these types here)
 export type Project = {
   id: number;
   name: string;

@@ -112,7 +112,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (token) setAuth(token, user);
 
-      // No email-confirm flow here (backend could add it later)
       return { needsConfirm: false };
     } catch (err: any) {
       return { error: err?.message ?? "Signup failed" };

@@ -1,4 +1,3 @@
-// src/routes/estimates.ts
 import { Router, Request, Response } from "express";
 import { prisma } from "../prisma";
 import { auth as authMiddleware } from "../auth";
@@ -47,7 +46,7 @@ function coerceProjectId(id: number | string): number {
   return n;
 }
 
-// 🔒 All estimate routes require auth
+// All estimate routes require auth
 r.use(authMiddleware);
 
 // === Create & calculate estimate ===
@@ -66,7 +65,7 @@ r.post("/", async (req: Request, res: Response) => {
 
     const projectIdNum = coerceProjectId(projectId);
 
-    // 🔒 Ensure project belongs to this user
+    // Ensure project belongs to this user
     const project = await prisma.project.findFirst({
       where: { id: projectIdNum, user_id: userId },
     });

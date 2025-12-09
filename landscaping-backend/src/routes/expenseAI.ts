@@ -1,4 +1,3 @@
-// src/routes/expenseAI.ts
 import { Router, Request, Response } from "express";
 import { prisma } from "../prisma";
 import { aiCategorizeExpense } from "../services/aiCategorize";

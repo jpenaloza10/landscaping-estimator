@@ -1,5 +1,5 @@
 import { ExpenseCategory } from "@prisma/client";
-import { callAI } from "./aiClient"; // ⬅️ adjust path if needed (e.g. "../aiClient")
+import { callAI } from "./aiClient"; 
 
 // Allowed categories for both AI + fallback
 const ALLOWED: ExpenseCategory[] = [
@@ -55,7 +55,7 @@ export async function aiCategorizeExpense(input: {
   // Always have a deterministic fallback ready
   const fallback = ruleBasedCategorize(input);
 
-  // If AI key is missing, callAI will throw — we’ll catch below and return fallback.
+  // If AI key is missing, callAI will throw — catch below and return fallback.
   const combinedText = `
 Vendor: ${input.vendor || ""}
 Description: ${input.description || ""}

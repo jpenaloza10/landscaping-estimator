@@ -4,8 +4,8 @@ import { useAuth } from "../auth/AuthContext";
 import { authedFetch, ApiError, Project } from "../lib/api";
 
 type ProjectsResponse =
-  | { projects: Project[] } // your backend returns this shape
-  | Project[];              // tolerate raw arrays too
+  | { projects: Project[] } 
+  | Project[];              
 
 export default function Projects() {
   const navigate = useNavigate();

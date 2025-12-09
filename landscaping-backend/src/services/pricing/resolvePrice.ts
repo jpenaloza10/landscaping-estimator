@@ -7,7 +7,6 @@ const prisma = new PrismaClient();
 
 const PROVIDERS: PriceProvider[] = [SupplierProvider, RetailProvider, IndexProvider];
 
-// optional: per-provider TTL minutes
 const TTL: Record<string, number> = {
   SupplierCSV: 10080, // 7 days
   RetailX: 1440,      // 24h

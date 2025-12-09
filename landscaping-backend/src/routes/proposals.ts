@@ -1,4 +1,3 @@
-// src/routes/proposals.ts
 import { Router } from "express";
 import PDFDocument from "pdfkit";
 import { prisma } from "../prisma";
@@ -54,7 +53,7 @@ r.get("/:estimateId.pdf", async (req, res) => {
       narrative = await callAI(prompt);
     } catch (err) {
       console.error("[proposals] AI narrative failed:", err);
-      narrative = null; // just skip AI section if it fails
+      narrative = null; 
     }
 
     res.setHeader("Content-Type", "application/pdf");

@@ -16,7 +16,7 @@ import { RequireAuth } from "./auth/RequireAuth";
 import AppLayout from "./layouts/AppLayout";
 import ProjectWizard from "./pages/ProjectWizard";
 
-// 🔽 Sprint 2 pages (add these files if you don't have them yet)
+// Sprint 2 pages 
 import EstimateWizard from "./pages/EstimateWizard";
 import Assemblies from "./pages/Assemblies";
 import Expenses from "./pages/Expenses";
@@ -43,10 +43,10 @@ const router = createBrowserRouter([
       { path: "/projects", element: <Projects /> },
       { path: "/projectwizard", element: <ProjectWizard /> },
 
-      // 🔽 Sprint 2 routes
+      // Sprint 2 routes
       { path: "/estimate", element: <EstimateWizard /> },
       { path: "/assemblies", element: <Assemblies /> },
-      { path: "/expenses", element: <Expenses /> },         // handy now; core work in Sprint 4
+      { path: "/expenses", element: <Expenses /> },         
       { path: "/proposals/:estimateId", element: <ProposalViewer /> },
 
       { path: "/account", element: <Account /> },

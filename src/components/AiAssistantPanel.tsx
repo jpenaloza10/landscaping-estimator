@@ -1,4 +1,3 @@
-// src/components/AiAssistantPanel.tsx
 import { useState } from "react";
 import {
   aiRecommendAssemblies,

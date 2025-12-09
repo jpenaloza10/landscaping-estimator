@@ -153,7 +153,7 @@ export default function AppLayout() {
 
       {/* Page container */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Default responsive grid wrapper that your pages can rely on */}
+        {/* Default responsive grid wrapper that pages can rely on */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Outlet />
         </div>

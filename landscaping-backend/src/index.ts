@@ -298,7 +298,6 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
 
   // Reflect the Origin if allowed, so the browser sees CORS even on errors
   const origin = req.headers.origin as string | undefined;
-  // Reuse your allow logic: exact static origins + *.vercel.app previews
   try {
     if (!origin) {
       res.setHeader("Access-Control-Allow-Origin", "*"); // no credentials case
