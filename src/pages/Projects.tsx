@@ -48,93 +48,83 @@ export default function Projects() {
   }, [token, loading, navigate]);
 
   const content = useMemo(() => {
-    // loading skeleton (render as cards so it fits the layout grid)
     if (loading || loadingList) {
       return (
-        <>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl shadow-sm p-4 animate-pulse">
-              <div className="h-4 w-48 bg-slate-200 rounded mb-2" />
-              <div className="h-3 w-64 bg-slate-200 rounded mb-1" />
-              <div className="h-3 w-40 bg-slate-200 rounded" />
+            <div key={i} className="brand-card animate-pulse space-y-3">
+              <div className="h-4 w-40 bg-brand-cream/10 rounded" />
+              <div className="h-3 w-56 bg-brand-cream/10 rounded" />
+              <div className="h-3 w-32 bg-brand-cream/10 rounded" />
             </div>
           ))}
-        </>
-      );
-    }
-
-    // error card (full width)
-    if (err) {
-      return (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 sm:col-span-2 lg:col-span-3">
-          <div className="font-medium">Couldn’t load projects</div>
-          <div className="text-sm">{err}</div>
         </div>
       );
     }
 
-    // empty state (centered, full width)
+    if (err) {
+      return (
+        <div className="brand-card border-brand-orange/40 mt-6">
+          <p className="font-sans text-xs font-semibold tracking-widest uppercase text-brand-orange mb-1">Error</p>
+          <p className="font-sans text-sm text-brand-cream-dim">{err}</p>
+        </div>
+      );
+    }
+
     if (!projects.length) {
       return (
-        <div className="text-slate-700 bg-white rounded-2xl shadow-sm p-6 sm:col-span-2 lg:col-span-3">
-          <div className="font-semibold">No projects yet</div>
-          <p className="text-sm mt-1">Create your first project to get started.</p>
-          <Link
-            to="/projects/new"
-            className="inline-block mt-3 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
+        <div className="brand-card text-center py-12 mt-6">
+          <p className="font-serif text-2xl italic font-bold text-brand-cream mb-2">No projects yet</p>
+          <p className="font-sans text-xs text-brand-cream-dim mb-6 tracking-wide">Create your first project to get started.</p>
+          <Link to="/projects/new" className="btn-brand-primary">
             New Project
           </Link>
         </div>
       );
     }
 
-    // project cards (each card fits into the layout grid cell)
     return (
-      <>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6">
         {projects.map((p) => (
-          <div key={p.id} className="bg-white rounded-2xl shadow-sm p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="font-semibold text-green-800">{p.name}</div>
-                {p.location && <div className="text-sm text-slate-600">{p.location}</div>}
-                {p.description && (
-                  <div className="text-sm text-slate-500 mt-1 line-clamp-2">
-                    {p.description}
-                  </div>
-                )}
-                <div className="text-xs text-slate-400 mt-2">
-                  Created: {new Date(p.created_at).toLocaleString()}
-                </div>
-              </div>
-              <Link
-                to={`/projects/${p.id}`}
-                className="shrink-0 text-green-700 hover:underline mt-1"
-              >
-                Open →
-              </Link>
+          <div key={p.id} className="brand-card flex flex-col justify-between gap-4">
+            <div>
+              <p className="font-serif text-lg font-bold italic text-brand-cream">{p.name}</p>
+              {p.location && (
+                <p className="font-sans text-[11px] text-brand-cream-dim mt-1 tracking-wide">{p.location}</p>
+              )}
+              {p.description && (
+                <p className="font-sans text-xs text-brand-cream-dim/70 mt-2 line-clamp-2 leading-relaxed">
+                  {p.description}
+                </p>
+              )}
+              <p className="font-sans text-[10px] text-brand-cream-dim/40 mt-3 tracking-widest uppercase">
+                {new Date(p.created_at).toLocaleDateString()}
+              </p>
             </div>
+            <Link
+              to={`/projects/${p.id}`}
+              className="btn-brand-outline self-start text-[10px] px-4 py-2"
+            >
+              Open →
+            </Link>
           </div>
         ))}
-      </>
+      </div>
     );
   }, [loading, loadingList, err, projects]);
 
   return (
-    <>
-      {/* full-width header card that spans the grid */}
-      <div className="bg-white rounded-2xl shadow-sm p-4 flex items-center justify-between sm:col-span-2 lg:col-span-3">
-        <h1 className="text-2xl font-bold text-green-700">Your Projects</h1>
-        <Link
-          to="/projects/new"
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-        >
-          New Project
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <p className="brand-eyebrow mb-1">Your work</p>
+          <h1 className="font-serif text-4xl font-black italic text-brand-cream">Projects</h1>
+        </div>
+        <Link to="/projects/new" className="btn-brand-primary">
+          + New Project
         </Link>
       </div>
-
-      {/* the rest of the cards flow into the layout grid */}
       {content}
-    </>
+    </div>
   );
 }

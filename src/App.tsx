@@ -58,7 +58,6 @@ function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Close the mobile menu after navigation
   function handleNavClick(cb?: () => void) {
     return () => {
       setMenuOpen(false);
@@ -66,73 +65,69 @@ function AppShell({ children }: { children: ReactNode }) {
     };
   }
 
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `font-sans text-[11px] font-semibold tracking-[0.18em] uppercase transition-colors ${
+      isActive ? "text-brand-orange" : "text-brand-green hover:text-brand-orange"
+    }`;
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
-      {/* Skip link for a11y */}
+    <div className="min-h-screen bg-brand-green text-brand-cream antialiased">
+      {/* Skip link */}
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] rounded bg-slate-900 px-3 py-2 text-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] bg-brand-cream text-brand-green px-3 py-2 text-xs font-bold tracking-widest uppercase"
       >
         Skip to content
       </a>
 
-      {/* HEADER / NAV */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="font-bold text-green-700" onClick={handleNavClick()}>
-              Landscaping Estimator
-            </Link>
-          </div>
+      {/* ── NAV ── */}
+      <header className="sticky top-0 z-50 bg-brand-cream border-b border-brand-green/10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-8 h-[60px] flex items-center justify-between">
 
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-6 text-sm" aria-label="Primary">
-            {!user ? (
+          {/* Left nav links */}
+          <nav className="hidden md:flex items-center gap-8" aria-label="Primary left">
+            {user ? (
               <>
-                <NavLink
-                  to="/login"
-                  className={({ isActive }) =>
-                    isActive ? "text-green-800 font-medium" : "text-green-700 hover:text-green-800"
-                  }
-                >
-                  Login
-                </NavLink>
-                <NavLink
-                  to="/signup"
-                  className={({ isActive }) =>
-                    isActive ? "text-green-800 font-medium" : "text-green-700 hover:text-green-800"
-                  }
-                >
-                  Sign Up
-                </NavLink>
+                <NavLink to="/projects" className={navLinkClass}>Projects</NavLink>
+                <NavLink to="/dashboard" className={navLinkClass}>Dashboard</NavLink>
               </>
             ) : (
+              <NavLink to="/login" className={navLinkClass}>Sign In</NavLink>
+            )}
+          </nav>
+
+          {/* Centre wordmark */}
+          <Link
+            to="/"
+            onClick={handleNavClick()}
+            className="font-serif text-lg font-bold italic text-brand-green tracking-wide absolute left-1/2 -translate-x-1/2"
+          >
+            Landscaping Estimator
+          </Link>
+
+          {/* Right nav links */}
+          <nav className="hidden md:flex items-center gap-8" aria-label="Primary right">
+            {user ? (
               <>
-                <NavLink
-                  to="/projects"
-                  className={({ isActive }) =>
-                    isActive ? "text-green-800 font-medium" : "text-green-700 hover:text-green-800"
-                  }
-                >
-                  Projects
-                </NavLink>
+                <NavLink to="/expenses" className={navLinkClass}>Expenses</NavLink>
                 <button
                   onClick={handleNavClick(async () => {
                     await clearAuth();
                     navigate("/login", { replace: true });
                   })}
-                  className="text-red-600 hover:text-red-700"
-                  title="Logout"
+                  className="font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange transition-colors"
                 >
-                  Logout
+                  Sign Out
                 </button>
               </>
+            ) : (
+              <NavLink to="/signup" className={navLinkClass}>Sign Up</NavLink>
             )}
           </nav>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile hamburger */}
           <button
-            className="md:hidden inline-flex items-center justify-center rounded-lg p-2 hover:bg-slate-100"
+            className="md:hidden ml-auto text-brand-green p-2"
             aria-label="Toggle menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
@@ -143,48 +138,28 @@ function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        {/* Mobile Nav Drawer */}
+        {/* Mobile drawer */}
         {menuOpen && (
-          <div className="md:hidden border-t border-slate-200">
-            <nav
-              className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-2 text-sm"
-              aria-label="Mobile"
-            >
+          <div className="md:hidden border-t border-brand-green/10 bg-brand-cream">
+            <nav className="px-4 py-4 flex flex-col gap-4" aria-label="Mobile">
               {!user ? (
                 <>
-                  <NavLink
-                    to="/login"
-                    onClick={handleNavClick()}
-                    className={({ isActive }) => (isActive ? "text-green-800 font-medium" : "text-green-700")}
-                  >
-                    Login
-                  </NavLink>
-                  <NavLink
-                    to="/signup"
-                    onClick={handleNavClick()}
-                    className={({ isActive }) => (isActive ? "text-green-800 font-medium" : "text-green-700")}
-                  >
-                    Sign Up
-                  </NavLink>
+                  <NavLink to="/login" onClick={handleNavClick()} className={navLinkClass}>Sign In</NavLink>
+                  <NavLink to="/signup" onClick={handleNavClick()} className={navLinkClass}>Sign Up</NavLink>
                 </>
               ) : (
                 <>
-                  <NavLink
-                    to="/projects"
-                    onClick={handleNavClick()}
-                    className={({ isActive }) => (isActive ? "text-green-800 font-medium" : "text-green-700")}
-                  >
-                    Projects
-                  </NavLink>
+                  <NavLink to="/projects" onClick={handleNavClick()} className={navLinkClass}>Projects</NavLink>
+                  <NavLink to="/dashboard" onClick={handleNavClick()} className={navLinkClass}>Dashboard</NavLink>
+                  <NavLink to="/expenses" onClick={handleNavClick()} className={navLinkClass}>Expenses</NavLink>
                   <button
                     onClick={handleNavClick(async () => {
                       await clearAuth();
                       navigate("/login", { replace: true });
                     })}
-                    className="text-red-600 text-left"
-                    title="Logout"
+                    className="text-left font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange"
                   >
-                    Logout
+                    Sign Out
                   </button>
                 </>
               )}
@@ -193,16 +168,17 @@ function AppShell({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      {/* CONTENT */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-        <main id="main">
-          {children}
-        </main>
-      </div>
+      {/* ── CONTENT ── */}
+      <main id="main" className="mx-auto max-w-7xl px-4 sm:px-8 py-8">
+        {children}
+      </main>
 
-      {/* FOOTER */}
-      <footer className="py-6 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} Landscaping Estimator
+      {/* ── FOOTER ── */}
+      <footer className="bg-brand-green-dark border-t border-brand-cream/10 py-8 px-8 flex flex-wrap items-center justify-between gap-4">
+        <span className="font-serif text-base italic font-bold text-brand-cream">Landscaping Estimator</span>
+        <span className="font-sans text-[11px] tracking-widest uppercase text-brand-cream-dim/50">
+          © {new Date().getFullYear()} · All rights reserved
+        </span>
       </footer>
     </div>
   );

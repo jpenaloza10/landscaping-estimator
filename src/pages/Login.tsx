@@ -42,58 +42,74 @@ export default function Login() {
   }
 
   return (
-    <div className="max-w-sm mx-auto p-6 bg-white rounded-2xl shadow mt-10">
-      <h1 className="text-lg font-semibold mb-4">Sign in</h1>
+    <div className="min-h-[70vh] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        {/* Heading */}
+        <p className="brand-eyebrow text-center mb-2">Welcome back</p>
+        <h1 className="font-serif text-4xl font-black italic text-brand-cream text-center mb-8">
+          Sign In
+        </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <input
-          className="w-full border rounded p-2"
-          placeholder="Email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        {/* Card */}
+        <div className="brand-card space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block font-sans text-[10px] font-semibold tracking-[0.18em] uppercase text-brand-cream-dim mb-2">
+                Email
+              </label>
+              <input
+                className="brand-input"
+                placeholder="you@example.com"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
 
-        <div className="w-full border rounded flex items-center pr-2">
-          <input
-            className="w-full p-2 rounded-l"
-            placeholder="Password"
-            type={showPw ? "text" : "password"}
-            autoComplete="current-password"
-            value={pw}
-            onChange={(e) => setPw(e.target.value)}
-          />
-          <button
-            type="button"
-            className="text-xs text-slate-600"
-            onClick={() => setShowPw((v) => !v)}
-            aria-label={showPw ? "Hide password" : "Show password"}
-          >
-            {showPw ? "Hide" : "Show"}
-          </button>
+            <div>
+              <label className="block font-sans text-[10px] font-semibold tracking-[0.18em] uppercase text-brand-cream-dim mb-2">
+                Password
+              </label>
+              <div className="flex items-center border border-brand-cream/30 rounded-sm focus-within:border-brand-cream/70 transition-colors">
+                <input
+                  className="flex-1 bg-transparent px-3 py-2 text-sm text-brand-cream placeholder-brand-cream-dim/50 focus:outline-none"
+                  placeholder="••••••••"
+                  type={showPw ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={pw}
+                  onChange={(e) => setPw(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="pr-3 font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-cream transition-colors"
+                  onClick={() => setShowPw((v) => !v)}
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                >
+                  {showPw ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
+
+            {err && (
+              <p className="font-sans text-xs text-brand-orange border border-brand-orange/30 bg-brand-orange/10 px-3 py-2 rounded-sm">
+                {err}
+              </p>
+            )}
+
+            <button className="btn-brand-primary w-full mt-2" disabled={loading}>
+              {loading ? "Please wait…" : "Sign In"}
+            </button>
+          </form>
+
+          <p className="font-sans text-xs text-center text-brand-cream-dim pt-2 border-t border-brand-cream/10">
+            No account?{" "}
+            <Link className="text-brand-cream underline underline-offset-2 hover:text-brand-orange transition-colors" to="/signup">
+              Sign up
+            </Link>
+          </p>
         </div>
-
-        <button
-          className="w-full rounded bg-slate-900 text-white py-2 disabled:opacity-60"
-          disabled={loading}
-        >
-          {loading ? "Please wait…" : "Sign in"}
-        </button>
-      </form>
-
-      {err && <p className="text-sm text-red-600 mt-3">{err}</p>}
-
-      <p className="mt-4 text-sm text-slate-700">
-        Don’t have an account?{" "}
-        <Link className="text-green-700 underline" to="/signup">
-          Sign up
-        </Link>
-      </p>
-
-      <p className="mt-3 text-xs text-slate-500">
-        Trouble signing in? Make sure your email is confirmed if your workspace requires it.
-      </p>
+      </div>
     </div>
   );
 }

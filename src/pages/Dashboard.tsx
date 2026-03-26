@@ -49,102 +49,83 @@ export default function Dashboard() {
 
   // --- CARDS (rendered directly into AppLayout's responsive grid) ---
 
-  // 1) Welcome / banner (full width)
+  // 1) Welcome banner
   const WelcomeCard = (
-    <div className="rounded-2xl bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-3">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-green-700">
-            Welcome, {displayName}
-          </h1>
-          <p className="text-sm text-gray-600">
-            Your snapshot of projects and budgets at a glance.
-          </p>
-        </div>
-        <div className="mt-3 sm:mt-0">
-          <Link
-            to="/projects/new"
-            className="inline-flex items-center rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
-          >
-            + New Project
-          </Link>
-        </div>
+    <div className="brand-card flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div>
+        <p className="brand-eyebrow mb-1">Dashboard</p>
+        <h1 className="font-serif text-3xl font-black italic text-brand-cream">
+          Welcome, {displayName}
+        </h1>
+        <p className="font-sans text-xs text-brand-cream-dim mt-1 tracking-wide">
+          Your snapshot of projects and budgets at a glance.
+        </p>
       </div>
+      <Link to="/projects/new" className="btn-brand-primary shrink-0 mt-3 sm:mt-0">
+        + New Project
+      </Link>
     </div>
   );
 
   // 2) Quick actions
   const QuickActionsCard = (
-    <div className="rounded-2xl bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-base font-semibold">Quick Actions</h2>
+    <div className="brand-card">
+      <p className="brand-eyebrow mb-3">Quick Actions</p>
       <div className="flex flex-col gap-2">
-        <Link
-          to="/projects/new"
-          className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-        >
-          Create Project
-        </Link>
-        <Link
-          to="/projects"
-          className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-        >
-          View All Projects
-        </Link>
-        <Link
-          to="/expenses"
-          className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-        >
-          Open Expense Tracker
-        </Link>
+        {[
+          { to: "/projects/new", label: "Create Project" },
+          { to: "/projects",     label: "View All Projects" },
+          { to: "/expenses",     label: "Expense Tracker" },
+        ].map(({ to, label }) => (
+          <Link
+            key={to}
+            to={to}
+            className="font-sans text-[11px] font-semibold tracking-[0.15em] uppercase
+                       border border-brand-cream/20 px-3 py-2 text-brand-cream-dim
+                       hover:border-brand-cream/50 hover:text-brand-cream transition-colors"
+          >
+            {label}
+          </Link>
+        ))}
       </div>
     </div>
   );
 
-  // 3) Recent projects (span 2 cols on large screens)
+  // 3) Recent projects
   const RecentProjectsCard = (
-    <div className="rounded-2xl bg-white p-4 shadow-sm lg:col-span-2">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-semibold">Recent Projects</h2>
-        <Link to="/projects" className="text-sm text-green-700 hover:underline">
-          View all
+    <div className="brand-card">
+      <div className="flex items-center justify-between mb-4">
+        <p className="brand-eyebrow">Recent Projects</p>
+        <Link to="/projects" className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors">
+          View all →
         </Link>
       </div>
 
       {loadingProjects && (
-        <div className="text-sm text-gray-600">Loading projects…</div>
+        <p className="font-sans text-xs text-brand-cream-dim animate-pulse">Loading projects…</p>
       )}
       {projectsErr && (
-        <div className="text-sm text-red-600">{projectsErr}</div>
+        <p className="font-sans text-xs text-brand-orange">{projectsErr}</p>
       )}
-
       {!loadingProjects && !projectsErr && projects.length === 0 && (
-        <div className="text-sm text-gray-500">
-          No projects yet — create your first one.
-        </div>
+        <p className="font-sans text-xs text-brand-cream-dim">No projects yet — create your first one.</p>
       )}
-
       {!loadingProjects && !projectsErr && projects.length > 0 && (
-        <ul className="divide-y">
+        <ul className="divide-y divide-brand-cream/10">
           {projects.slice(0, 6).map((p) => (
             <li key={p.id} className="py-3 first:pt-0 last:pb-0">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{p.name}</div>
-                  <div className="truncate text-xs text-gray-600">
+                  <div className="font-serif text-sm font-bold italic text-brand-cream truncate">{p.name}</div>
+                  <div className="font-sans text-[11px] text-brand-cream-dim truncate mt-0.5">
                     {p.location || "No location"}
-                  </div>
-                  {p.description && (
-                    <div className="mt-1 line-clamp-2 whitespace-pre-line text-xs text-gray-500">
-                      {p.description}
-                    </div>
-                  )}
-                  <div className="mt-1 text-[11px] text-gray-400">
-                    Created: {new Date(p.created_at).toLocaleString()}
                   </div>
                 </div>
                 <Link
                   to={`/projects/${p.id}`}
-                  className="shrink-0 rounded-lg border px-2 py-1 text-xs hover:bg-gray-50"
+                  className="shrink-0 font-sans text-[10px] font-semibold tracking-widest uppercase
+                             border border-brand-cream/20 px-2 py-1 text-brand-cream-dim
+                             hover:border-brand-orange hover:text-brand-orange transition-colors"
                 >
                   Open
                 </Link>
@@ -156,64 +137,39 @@ export default function Dashboard() {
     </div>
   );
 
-  // 4) Budget snapshot – safe null checks for summary
+  // 4) Budget snapshot
   const BudgetSnapshotCard = (
-    <div className="rounded-2xl bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-base font-semibold">Budget Snapshot</h2>
+    <div className="brand-card">
+      <p className="brand-eyebrow mb-4">Budget Snapshot</p>
 
       {loadingSummary && (
-        <p className="text-sm text-gray-600">Loading budget snapshot…</p>
+        <p className="font-sans text-xs text-brand-cream-dim animate-pulse">Loading…</p>
       )}
-
       {!loadingSummary && summaryErr && (
-        <p className="text-sm text-red-600">{summaryErr}</p>
+        <p className="font-sans text-xs text-brand-orange">{summaryErr}</p>
       )}
-
       {!loadingSummary && !summaryErr && summary == null && (
-        <p className="text-sm text-gray-600">
-          No financial data yet — create estimates and log expenses.
-        </p>
+        <p className="font-sans text-xs text-brand-cream-dim">No financial data yet.</p>
       )}
-
       {!loadingSummary && !summaryErr && summary && (
         <>
-          <p className="text-xs text-gray-600 mb-2">
-            Contract = estimates + approved change orders across all projects.
-          </p>
-          <div className="mt-1 grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-lg border p-3">
-              <div className="text-xs text-gray-500">Estimated (Contract)</div>
-              <div className="text-sm font-semibold">
-                ${estimated.toFixed(0)}
+          <div className="grid grid-cols-3 gap-3 text-center mb-3">
+            {[
+              { label: "Contract",  value: estimated },
+              { label: "Expenses",  value: actual },
+              { label: "Remaining", value: remaining, colored: true },
+            ].map(({ label, value, colored }) => (
+              <div key={label} className="border border-brand-cream/15 p-3">
+                <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">{label}</div>
+                <div className={`font-serif text-base font-bold italic ${colored && value < 0 ? "text-brand-orange" : "text-brand-cream"}`}>
+                  ${value.toFixed(0)}
+                </div>
               </div>
-            </div>
-            <div className="rounded-lg border p-3">
-              <div className="text-xs text-gray-500">Actual (Expenses)</div>
-              <div className="text-sm font-semibold">
-                ${actual.toFixed(0)}
-              </div>
-            </div>
-            <div className="rounded-lg border p-3">
-              <div className="text-xs text-gray-500">Remaining</div>
-              <div
-                className={
-                  "text-sm font-semibold " +
-                  (remaining < 0 ? "text-red-600" : "text-gray-900")
-                }
-              >
-                ${remaining.toFixed(0)}
-              </div>
-            </div>
+            ))}
           </div>
-
-          <div className="mt-3 rounded-lg border p-3 text-center">
-            <div className="text-xs text-gray-500">Gross Profit</div>
-            <div
-              className={
-                "text-sm font-semibold " +
-                (summary.grossProfit < 0 ? "text-red-600" : "text-green-700")
-              }
-            >
+          <div className="border border-brand-cream/15 p-3 text-center">
+            <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">Gross Profit</div>
+            <div className={`font-serif text-xl font-black italic ${summary.grossProfit < 0 ? "text-brand-orange" : "text-brand-orange-light"}`}>
               ${summary.grossProfit.toFixed(0)}
             </div>
           </div>
@@ -223,11 +179,17 @@ export default function Dashboard() {
   );
 
   return (
-    <>
+    <div className="space-y-6">
       {WelcomeCard}
-      {QuickActionsCard}
-      {RecentProjectsCard}
-      {BudgetSnapshotCard}
-    </>
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="md:col-span-2 space-y-6">
+          {RecentProjectsCard}
+        </div>
+        <div className="space-y-6">
+          {QuickActionsCard}
+          {BudgetSnapshotCard}
+        </div>
+      </div>
+    </div>
   );
 }

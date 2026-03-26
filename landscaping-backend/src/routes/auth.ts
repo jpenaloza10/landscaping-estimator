@@ -37,7 +37,7 @@ r.post("/signup", authRateLimit, async (req: Request, res: Response) => {
     if (!parsed.success) {
       return res
         .status(400)
-        .json({ error: parsed.error.errors[0]?.message ?? "Invalid signup data" });
+        .json({ error: parsed.error.issues[0]?.message ?? "Invalid signup data" });
     }
 
     const { name, email, password } = parsed.data;
@@ -70,7 +70,7 @@ r.post("/login", authRateLimit, async (req: Request, res: Response) => {
     if (!parsed.success) {
       return res
         .status(400)
-        .json({ error: parsed.error.errors[0]?.message ?? "Invalid login data" });
+        .json({ error: parsed.error.issues[0]?.message ?? "Invalid login data" });
     }
 
     const { email, password } = parsed.data;

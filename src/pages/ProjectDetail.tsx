@@ -63,20 +63,20 @@ export default function ProjectDetail() {
 
   if (loading) {
     return (
-      <div className="space-y-3 animate-pulse">
-        <div className="h-6 w-48 bg-slate-200 rounded" />
-        <div className="h-4 w-64 bg-slate-200 rounded" />
-        <div className="h-4 w-40 bg-slate-200 rounded" />
+      <div className="space-y-4 animate-pulse">
+        <div className="h-5 w-32 bg-brand-cream/10 rounded" />
+        <div className="h-8 w-64 bg-brand-cream/10 rounded" />
+        <div className="h-4 w-48 bg-brand-cream/10 rounded" />
       </div>
     );
   }
 
   if (err) {
     return (
-      <div className="rounded-2xl bg-red-50 border border-red-200 p-4 text-red-700">
-        <div className="font-medium">Error</div>
-        <div className="text-sm mt-1">{err}</div>
-        <Link to="/projects" className="mt-3 inline-block text-sm underline text-red-700">
+      <div className="brand-card border-brand-orange/40">
+        <p className="brand-eyebrow mb-1">Error</p>
+        <p className="font-sans text-sm text-brand-cream-dim mt-1">{err}</p>
+        <Link to="/projects" className="font-sans text-xs text-brand-cream-dim underline underline-offset-2 mt-3 inline-block hover:text-brand-orange">
           ← Back to projects
         </Link>
       </div>
@@ -86,57 +86,59 @@ export default function ProjectDetail() {
   if (!project) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <Link to="/projects" className="text-xs text-slate-500 hover:underline">
-            ← Projects
-          </Link>
-          <h1 className="text-xl font-bold text-green-700 mt-1">{project.name}</h1>
-          {project.location && (
-            <p className="text-sm text-slate-600">{project.location}</p>
-          )}
-          {project.description && (
-            <p className="text-sm text-slate-500 mt-1">{project.description}</p>
-          )}
-        </div>
-        <Link
-          to={`/estimate?projectId=${project.id}`}
-          className="shrink-0 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
-        >
-          + New Estimate
+      <div>
+        <Link to="/projects" className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors">
+          ← Projects
         </Link>
+        <div className="flex items-start justify-between gap-4 mt-3">
+          <div>
+            <p className="brand-eyebrow mb-1">Project</p>
+            <h1 className="font-serif text-4xl font-black italic text-brand-cream">{project.name}</h1>
+            {project.location && (
+              <p className="font-sans text-sm text-brand-cream-dim mt-1">{project.location}</p>
+            )}
+            {project.description && (
+              <p className="font-sans text-xs text-brand-cream-dim/70 mt-2 leading-relaxed max-w-lg">{project.description}</p>
+            )}
+          </div>
+          <Link to={`/estimate?projectId=${project.id}`} className="btn-brand-primary shrink-0">
+            + New Estimate
+          </Link>
+        </div>
       </div>
 
-      {/* Estimates list */}
-      <div>
-        <h2 className="font-semibold mb-2">Estimates</h2>
+      {/* Estimates */}
+      <div className="brand-card">
+        <p className="brand-eyebrow mb-4">Estimates</p>
 
         {estimates.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            No estimates yet for this project.
-          </p>
+          <p className="font-sans text-xs text-brand-cream-dim">No estimates yet for this project.</p>
         ) : (
-          <ul className="divide-y rounded-xl border bg-white overflow-hidden">
+          <ul className="divide-y divide-brand-cream/10">
             {estimates.map((est) => (
-              <li key={String(est.id)} className="p-3 flex items-center justify-between gap-3">
-                <div className="text-sm">
-                  <div className="font-medium">Estimate #{String(est.id).slice(-6)}</div>
+              <li key={String(est.id)} className="py-3 flex items-center justify-between gap-3 first:pt-0 last:pb-0">
+                <div>
+                  <p className="font-serif text-sm font-bold italic text-brand-cream">
+                    Estimate #{String(est.id).slice(-6)}
+                  </p>
                   {est.created_at && (
-                    <div className="text-xs text-slate-500">
+                    <p className="font-sans text-[10px] text-brand-cream-dim mt-0.5 tracking-wide">
                       {new Date(est.created_at).toLocaleString()}
-                    </div>
+                    </p>
                   )}
                 </div>
-                <div className="text-sm text-right">
+                <div className="text-right">
                   {est.total != null && (
-                    <div className="font-semibold">${Number(est.total).toFixed(2)}</div>
+                    <p className="font-serif text-lg font-black italic text-brand-orange-light">
+                      ${Number(est.total).toFixed(2)}
+                    </p>
                   )}
                   {est.tax != null && (
-                    <div className="text-xs text-slate-500">
+                    <p className="font-sans text-[10px] text-brand-cream-dim">
                       incl. ${Number(est.tax).toFixed(2)} tax
-                    </div>
+                    </p>
                   )}
                 </div>
               </li>
@@ -145,9 +147,9 @@ export default function ProjectDetail() {
         )}
       </div>
 
-      <div className="text-xs text-slate-400">
-        Created: {new Date(project.created_at).toLocaleString()}
-      </div>
+      <p className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim/40">
+        Created {new Date(project.created_at).toLocaleString()}
+      </p>
     </div>
   );
 }
