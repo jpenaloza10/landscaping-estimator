@@ -1,68 +1,64 @@
-import { BrowserRouter, Routes, Route, Link, NavLink, Navigate, useNavigate } from "react-router-dom";
-import { useState, type ReactNode } from "react";
-import Login from "./pages/Login";
-import SignUp from "./pages/SignUp";
-import Projects from "./pages/Projects";
+import {
+  BrowserRouter, Routes, Route, Link, NavLink,
+  Navigate, useNavigate, Outlet,
+} from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useAuth } from "./auth/AuthContext";
+
+// Pages
+import Home          from "./pages/Home";
+import Login         from "./pages/Login";
+import SignUp        from "./pages/SignUp";
+import Projects      from "./pages/Projects";
 import ProjectWizard from "./pages/ProjectWizard";
 import ProjectDetail from "./pages/ProjectDetail";
-import { useAuth } from "./auth/AuthContext";
+import Dashboard     from "./pages/Dashboard";
+import Expenses      from "./pages/Expenses";
+
+// Demo pages
+import SampleProjects  from "./pages/demo/SampleProjects";
+import SampleEstimates from "./pages/demo/SampleEstimates";
+import SampleExpenses  from "./pages/demo/SampleExpenses";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <AppShell>
-        <Routes>
-          {/* Landing: if logged in -> /projects, else show Login */}
-          <Route path="/" element={<LandingOrRedirect />} />
+      <Routes>
+        {/* Landing — full-width, own shell */}
+        <Route path="/" element={<LandingOrDashboard />} />
 
-          {/* Public auth routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
+        {/* Demo preview pages — own shell with banner */}
+        <Route path="/demo/projects"  element={<SampleProjects />} />
+        <Route path="/demo/estimates" element={<SampleEstimates />} />
+        <Route path="/demo/expenses"  element={<SampleExpenses />} />
 
-          {/* Protected routes */}
-          <Route
-            path="/projects"
-            element={
-              <RequireAuth>
-                <Projects />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/projects/new"
-            element={
-              <RequireAuth>
-                <ProjectWizard />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/projects/:id"
-            element={
-              <RequireAuth>
-                <ProjectDetail />
-              </RequireAuth>
-            }
-          />
+        {/* App pages — AppShell layout via Outlet */}
+        <Route element={<AppShell />}>
+          <Route path="/login"         element={<Login />} />
+          <Route path="/signup"        element={<SignUp />} />
+          <Route path="/projects"      element={<RequireAuth><Projects /></RequireAuth>} />
+          <Route path="/projects/new"  element={<RequireAuth><ProjectWizard /></RequireAuth>} />
+          <Route path="/projects/:id"  element={<RequireAuth><ProjectDetail /></RequireAuth>} />
+          <Route path="/dashboard"     element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="/expenses"      element={<RequireAuth><Expenses /></RequireAuth>} />
+        </Route>
 
-          {/* Catch-all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AppShell>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </BrowserRouter>
   );
 }
 
-function AppShell({ children }: { children: ReactNode }) {
+/* ─────────────────────────────────────────────
+   APP SHELL  (nav + footer for authenticated pages)
+───────────────────────────────────────────── */
+function AppShell() {
   const { user, clearAuth } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
   function handleNavClick(cb?: () => void) {
-    return () => {
-      setMenuOpen(false);
-      cb?.();
-    };
+    return () => { setMenuOpen(false); cb?.(); };
   }
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -72,23 +68,18 @@ function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-brand-green text-brand-cream antialiased">
-      {/* Skip link */}
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] bg-brand-cream text-brand-green px-3 py-2 text-xs font-bold tracking-widest uppercase"
-      >
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] bg-brand-cream text-brand-green px-3 py-2 text-xs font-bold tracking-widest uppercase">
         Skip to content
       </a>
 
-      {/* ── NAV ── */}
+      {/* NAV */}
       <header className="sticky top-0 z-50 bg-brand-cream border-b border-brand-green/10">
         <div className="mx-auto max-w-7xl px-4 sm:px-8 h-[60px] flex items-center justify-between">
 
-          {/* Left nav links */}
           <nav className="hidden md:flex items-center gap-8" aria-label="Primary left">
             {user ? (
               <>
-                <NavLink to="/projects" className={navLinkClass}>Projects</NavLink>
+                <NavLink to="/projects"  className={navLinkClass}>Projects</NavLink>
                 <NavLink to="/dashboard" className={navLinkClass}>Dashboard</NavLink>
               </>
             ) : (
@@ -96,16 +87,10 @@ function AppShell({ children }: { children: ReactNode }) {
             )}
           </nav>
 
-          {/* Centre wordmark */}
-          <Link
-            to="/"
-            onClick={handleNavClick()}
-            className="font-serif text-lg font-bold italic text-brand-green tracking-wide absolute left-1/2 -translate-x-1/2"
-          >
+          <Link to="/" className="font-serif text-lg font-bold italic text-brand-green tracking-wide absolute left-1/2 -translate-x-1/2">
             Landscaping Estimator
           </Link>
 
-          {/* Right nav links */}
           <nav className="hidden md:flex items-center gap-8" aria-label="Primary right">
             {user ? (
               <>
@@ -113,7 +98,7 @@ function AppShell({ children }: { children: ReactNode }) {
                 <button
                   onClick={handleNavClick(async () => {
                     await clearAuth();
-                    navigate("/login", { replace: true });
+                    navigate("/", { replace: true });
                   })}
                   className="font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange transition-colors"
                 >
@@ -133,29 +118,28 @@ function AppShell({ children }: { children: ReactNode }) {
             onClick={() => setMenuOpen((v) => !v)}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </button>
         </div>
 
-        {/* Mobile drawer */}
         {menuOpen && (
           <div className="md:hidden border-t border-brand-green/10 bg-brand-cream">
             <nav className="px-4 py-4 flex flex-col gap-4" aria-label="Mobile">
               {!user ? (
                 <>
-                  <NavLink to="/login" onClick={handleNavClick()} className={navLinkClass}>Sign In</NavLink>
+                  <NavLink to="/login"  onClick={handleNavClick()} className={navLinkClass}>Sign In</NavLink>
                   <NavLink to="/signup" onClick={handleNavClick()} className={navLinkClass}>Sign Up</NavLink>
                 </>
               ) : (
                 <>
-                  <NavLink to="/projects" onClick={handleNavClick()} className={navLinkClass}>Projects</NavLink>
+                  <NavLink to="/projects"  onClick={handleNavClick()} className={navLinkClass}>Projects</NavLink>
                   <NavLink to="/dashboard" onClick={handleNavClick()} className={navLinkClass}>Dashboard</NavLink>
-                  <NavLink to="/expenses" onClick={handleNavClick()} className={navLinkClass}>Expenses</NavLink>
+                  <NavLink to="/expenses"  onClick={handleNavClick()} className={navLinkClass}>Expenses</NavLink>
                   <button
                     onClick={handleNavClick(async () => {
                       await clearAuth();
-                      navigate("/login", { replace: true });
+                      navigate("/", { replace: true });
                     })}
                     className="text-left font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange"
                   >
@@ -168,15 +152,15 @@ function AppShell({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      {/* ── CONTENT ── */}
+      {/* CONTENT */}
       <main id="main" className="mx-auto max-w-7xl px-4 sm:px-8 py-8">
-        {children}
+        <Outlet />
       </main>
 
-      {/* ── FOOTER ── */}
+      {/* FOOTER */}
       <footer className="bg-brand-green-dark border-t border-brand-cream/10 py-8 px-8 flex flex-wrap items-center justify-between gap-4">
         <span className="font-serif text-base italic font-bold text-brand-cream">Landscaping Estimator</span>
-        <span className="font-sans text-[11px] tracking-widest uppercase text-brand-cream-dim/50">
+        <span className="font-sans text-[11px] tracking-widest uppercase text-brand-cream-dim opacity-50">
           © {new Date().getFullYear()} · All rights reserved
         </span>
       </footer>
@@ -184,15 +168,18 @@ function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-function LandingOrRedirect() {
+/* ─────────────────────────────────────────────
+   GUARDS
+───────────────────────────────────────────── */
+function LandingOrDashboard() {
   const { user, loading } = useAuth();
-  if (loading) return null; 
-  return user ? <Navigate to="/projects" replace /> : <Login />;
+  if (loading) return null;
+  return user ? <Navigate to="/projects" replace /> : <Home />;
 }
 
-function RequireAuth({ children }: { children: ReactNode }) {
+function RequireAuth({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth();
-  if (loading) return null; // show nothing (or a skeleton) while auth initializes
+  if (loading) return null;
   if (!token) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
