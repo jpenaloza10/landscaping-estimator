@@ -21,7 +21,7 @@ export default function DemoShell({ children, activeTab }: Props) {
     }`;
 
   return (
-    <div className="min-h-screen bg-brand-green text-brand-cream antialiased font-sans">
+    <div className="min-h-screen bg-brand-green text-brand-cream antialiased font-sans" style={{ backgroundColor: "#1B3A1E", color: "#F4EFE4" }}>
       {/* NAV */}
       <header className="sticky top-0 z-50 bg-brand-cream border-b border-brand-green/10">
         <div className="mx-auto max-w-7xl px-4 sm:px-8 h-[60px] flex items-center justify-between">

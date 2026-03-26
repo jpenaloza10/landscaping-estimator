@@ -67,7 +67,7 @@ function AppShell() {
     }`;
 
   return (
-    <div className="min-h-screen bg-brand-green text-brand-cream antialiased">
+    <div className="min-h-screen bg-brand-green text-brand-cream antialiased" style={{ backgroundColor: "#1B3A1E", color: "#F4EFE4" }}>
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] bg-brand-cream text-brand-green px-3 py-2 text-xs font-bold tracking-widest uppercase">
         Skip to content
       </a>
@@ -153,7 +153,7 @@ function AppShell() {
       </header>
 
       {/* CONTENT */}
-      <main id="main" className="mx-auto max-w-7xl px-4 sm:px-8 py-8">
+      <main id="main" className="mx-auto max-w-7xl px-4 sm:px-8 py-8" style={{ minHeight: "calc(100vh - 60px)" }}>
         <Outlet />
       </main>
 

@@ -17,15 +17,31 @@
   --font-script: "Dancing Script", cursive;
 }
 
-/* ─── Base styles ─── */
-@layer base {
-  html, body, #root {
-    min-height: 100%;
-    background-color: var(--color-brand-green);
-    color: var(--color-brand-cream);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
+/* ─── Hard-coded CSS custom properties (guarantee runtime availability) ─── */
+:root {
+  --brand-green:        #1B3A1E;
+  --brand-green-mid:    #243F27;
+  --brand-green-dark:   #111E12;
+  --brand-cream:        #F4EFE4;
+  --brand-cream-dim:    #D9D1C0;
+  --brand-orange:       #E07830;
+  --brand-orange-light: #F0924A;
+}
+
+/* ─── Base: guarantee green background on every page ─── */
+html {
+  background-color: var(--brand-green);
+  color: var(--brand-cream);
+  font-family: "Montserrat", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100%;
+}
+
+body,
+#root {
+  min-height: 100%;
+  background-color: var(--brand-green);
+  color: var(--brand-cream);
 }
 
 /* ─── Reusable brand component classes ─── */

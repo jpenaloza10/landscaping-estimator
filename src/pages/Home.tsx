@@ -133,7 +133,7 @@ function LandingNav() {
 ───────────────────────────────────────────── */
 export default function Home() {
   return (
-    <div className="min-h-screen bg-brand-green text-brand-cream antialiased font-sans">
+    <div className="min-h-screen bg-brand-green text-brand-cream antialiased font-sans" style={{ backgroundColor: "#1B3A1E", color: "#F4EFE4" }}>
       <LandingNav />
 
       {/* ── HERO ── */}
