@@ -298,7 +298,7 @@ export async function listExpenses(projectId: number) {
 
 export interface ExpenseInput {
   projectId: number;
-  description: string;
+  description?: string;
   amount: number;
   date?: string;
   category?: string;
