@@ -1,28 +1,9 @@
 /** @type {import('tailwindcss').Config} */
+// In Tailwind v4, brand colors and fonts are defined via @theme in index.css.
+// This file only needs to declare the content paths for class scanning.
 export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  theme: {
-    extend: {
-      colors: {
-        brand: {
-          green:     "#1B3A1E",
-          "green-mid": "#243F27",
-          "green-dark": "#111E12",
-          cream:     "#F4EFE4",
-          "cream-dim": "#D9D1C0",
-          orange:    "#E07830",
-          "orange-light": "#F0924A",
-        },
-      },
-      fontFamily: {
-        serif:  ['"Playfair Display"', "Georgia", "serif"],
-        script: ['"Dancing Script"', "cursive"],
-        sans:   ["Montserrat", "system-ui", "sans-serif"],
-      },
-    },
-  },
-  plugins: [],
 }
