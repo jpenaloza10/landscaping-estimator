@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { supabase } from "../lib/supabase"; 
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -16,21 +17,31 @@ export default function SignUp() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+
+    // Client-side validation
+    if (!name.trim()) {
+      setErr("Please enter your name.");
+      return;
+    }
+    if (!EMAIL_RE.test(email)) {
+      setErr("Please enter a valid email address.");
+      return;
+    }
+    if (password.length < 8) {
+      setErr("Password must be at least 8 characters.");
+      return;
+    }
+
     setBusy(true);
     try {
-      // Create the account via Supabase (through AuthContext)
-      await signUp(email, password);
-
-      
-      try {
-        await supabase.auth.updateUser({ data: { name } });
-      } catch {
-        /* ignore non-fatal metadata errors */
+      const result = await signUp(email, password);
+      if (result?.error) {
+        setErr(result.error);
+        return;
       }
-
       navigate("/projects", { replace: true });
-    } catch (e: any) {
-      const msg = e?.message || "Sign up failed";
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Sign up failed";
       setErr(msg);
     } finally {
       setBusy(false);
@@ -79,8 +90,10 @@ export default function SignUp() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
+            minLength={8}
             required
           />
+          <p className="text-xs text-slate-500 mt-1">Minimum 8 characters.</p>
         </div>
 
         <button

@@ -171,9 +171,11 @@ router.post("/", async (req: Request, res: Response) => {
     });
 
     res.json(expense);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[expenses.post]", e);
-    res.status(e?.status ?? 400).json({ error: e.message ?? "Failed to create expense" });
+    const status = (e as { status?: number })?.status ?? 500;
+    const message = e instanceof Error ? e.message : "Failed to create expense";
+    res.status(status).json({ error: message });
   }
 });
 
@@ -212,9 +214,11 @@ router.get("/", async (req: Request, res: Response) => {
     });
 
     res.json(expenses);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[expenses.get]", e);
-    res.status(e?.status ?? 400).json({ error: e.message ?? "Failed to load expenses" });
+    const status = (e as { status?: number })?.status ?? 500;
+    const message = e instanceof Error ? e.message : "Failed to load expenses";
+    res.status(status).json({ error: message });
   }
 });
 

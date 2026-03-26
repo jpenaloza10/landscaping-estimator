@@ -23,8 +23,8 @@ export default function DownloadPdfButton({ estimateId, filename }: Props) {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-    } catch (e: any) {
-      setErr(e?.message || "Failed to download PDF");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Failed to download PDF");
     } finally {
       setLoading(false);
     }

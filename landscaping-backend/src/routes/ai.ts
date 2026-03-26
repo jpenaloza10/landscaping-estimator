@@ -10,10 +10,10 @@ import { auth as authMiddleware } from "../auth";
 const router = Router();
 
 // Helper: map common AI config errors to nicer HTTP codes
-function handleAiError(res: any, e: any, context: string) {
+function handleAiError(res: { status: (code: number) => { json: (body: unknown) => void } }, e: unknown, context: string) {
   console.error(`AI ${context} error:`, e);
 
-  const msg = e?.message || "AI error";
+  const msg = e instanceof Error ? e.message : "AI error";
 
   // If the underlying client threw because there's no key configured
   if (msg.includes("AI API key not configured")) {
@@ -39,8 +39,8 @@ router.post("/recommend-assemblies", async (req, res) => {
     }
     const data = await aiRecommendAssemblies(estimateId);
     res.json(data);
-  } catch (e: any) {
-    return handleAiError(res, e, "recommend-assemblies");
+  } catch (e: unknown) {
+    return handleAiError(res, e,"recommend-assemblies");
   }
 });
 
@@ -57,8 +57,8 @@ router.post("/proposal-text", async (req, res) => {
       style ?? "professional"
     );
     res.json(result);
-  } catch (e: any) {
-    return handleAiError(res, e, "proposal-text");
+  } catch (e: unknown) {
+    return handleAiError(res, e,"proposal-text");
   }
 });
 
@@ -72,8 +72,8 @@ router.post("/validate-estimate", async (req, res) => {
     }
     const result = await aiValidateEstimate(estimateId);
     res.json(result);
-  } catch (e: any) {
-    return handleAiError(res, e, "validate-estimate");
+  } catch (e: unknown) {
+    return handleAiError(res, e,"validate-estimate");
   }
 });
 
@@ -87,8 +87,8 @@ router.post("/profit-analysis", async (req, res) => {
     }
     const result = await aiProfitAnalysis(estimateId);
     res.json(result);
-  } catch (e: any) {
-    return handleAiError(res, e, "profit-analysis");
+  } catch (e: unknown) {
+    return handleAiError(res, e,"profit-analysis");
   }
 });
 

@@ -52,9 +52,9 @@ export default function EstimateWizard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
 
-  const [area, setArea] = useState<number>(300);
-  const [zip, setZip] = useState("94103");
-  const [state, setState] = useState("CA");
+  const [area, setArea] = useState<number>(0);
+  const [zip, setZip] = useState("");
+  const [state, setState] = useState("");
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -79,8 +79,8 @@ export default function EstimateWizard() {
         if (projectsData?.length && activeProjectId == null) {
           setActiveProjectId(projectsData[0].id);
         }
-      } catch (e: any) {
-        setError(e?.message || "Failed to load assemblies or projects");
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Failed to load assemblies or projects");
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,14 +96,23 @@ export default function EstimateWizard() {
     [assemblies, assemblyId]
   );
 
+  // Build a name-lookup map for rendering estimate results
+  const assemblyNameById = useMemo(
+    () => new Map(assemblies.map((a) => [String(a.id), a.name])),
+    [assemblies]
+  );
+
+  const ZIP_RE = /^\d{5}(-\d{4})?$/;
+  const STATE_RE = /^[A-Z]{2}$/;
+
   const canCreate =
     !loading &&
     !!assemblyId &&
     activeProjectId != null &&
     Number.isFinite(area) &&
     area > 0 &&
-    state.trim().length > 0 &&
-    zip.trim().length > 0;
+    STATE_RE.test(state.trim()) &&
+    ZIP_RE.test(zip.trim());
 
   async function handleCreate() {
     if (!canCreate || activeProjectId == null) return;
@@ -123,10 +132,11 @@ export default function EstimateWizard() {
       }
 
       setEstimate(est);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const apiErr = e as { payload?: { error?: string }; message?: string };
       const msg =
-        (e?.payload as any)?.error ||
-        e?.message ||
+        apiErr?.payload?.error ||
+        (e instanceof Error ? e.message : null) ||
         "Failed to create estimate";
       setError(msg);
     } finally {
@@ -210,8 +220,9 @@ export default function EstimateWizard() {
             <input
               className="mt-1 w-full rounded border p-2"
               type="number"
-              min={0}
-              value={area}
+              min={1}
+              placeholder="e.g. 300"
+              value={area === 0 ? "" : area}
               onChange={(e) => setArea(Math.max(0, Number(e.target.value)))}
             />
             <span className="mt-1 block text-xs text-slate-500">
@@ -220,22 +231,24 @@ export default function EstimateWizard() {
           </label>
 
           <label className="text-sm">
-            State
+            State (2-letter code)
             <input
               className="mt-1 w-full rounded border p-2"
               value={state}
               onChange={(e) => handleStateChange(e.target.value)}
-              placeholder="CA"
+              placeholder="e.g. CA"
+              maxLength={2}
             />
           </label>
 
           <label className="text-sm">
-            ZIP
+            ZIP Code
             <input
               className="mt-1 w-full rounded border p-2"
               value={zip}
               onChange={(e) => setZip(e.target.value)}
-              placeholder="94103"
+              placeholder="e.g. 94103"
+              maxLength={10}
             />
           </label>
         </div>
@@ -284,7 +297,9 @@ export default function EstimateWizard() {
                   >
                     <div className="text-slate-700">
                       Assembly:{" "}
-                      <span className="font-medium">{line.assemblyId}</span>
+                      <span className="font-medium">
+                        {assemblyNameById.get(String(line.assemblyId)) ?? String(line.assemblyId)}
+                      </span>
                     </div>
                     <ul className="list-disc pl-4">
                       {line.items?.map((it, idx) => (

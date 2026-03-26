@@ -63,9 +63,9 @@ export default function ProjectWizard() {
       // Either to list:
       nav("/projects");
     
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Project create error:", e);
-      setErr(e?.message ?? "Something went wrong while creating the project.");
+      setErr(e instanceof Error ? e.message : "Something went wrong while creating the project.");
     } finally {
       setLoading(false);
     }

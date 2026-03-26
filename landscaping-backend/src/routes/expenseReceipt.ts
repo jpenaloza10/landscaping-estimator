@@ -111,9 +111,9 @@ router.post(
       });
 
       return res.json(expense);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("[receipt.ingest] error:", e);
-      return res.status(500).json({ error: e.message || "Server error" });
+      return res.status(500).json({ error: e instanceof Error ? e.message : "Server error" });
     }
   }
 );

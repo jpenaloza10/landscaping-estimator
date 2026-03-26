@@ -85,7 +85,7 @@ router.get("/summary", async (req: Request, res: Response) => {
       contractValue,
       grossProfit,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Dashboard summary error:", e);
     return res.status(500).json({ error: "Failed to load dashboard summary" });
   }
@@ -149,7 +149,7 @@ router.get("/projects", async (req: Request, res: Response) => {
     });
 
     return res.json({ projects: rows });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Dashboard projects error:", e);
     return res.status(500).json({ error: "Failed to load dashboard projects" });
   }

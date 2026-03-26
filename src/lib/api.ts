@@ -296,7 +296,19 @@ export async function listExpenses(projectId: number) {
   return api(`/api/expenses?projectId=${projectId}`);
 }
 
-export async function createExpense(input: any) {
+export interface ExpenseInput {
+  projectId: number;
+  description: string;
+  amount: number;
+  date?: string;
+  category?: string;
+  vendor?: string;
+  currency?: string;
+  receiptUrl?: string;
+  notes?: string;
+}
+
+export async function createExpense(input: ExpenseInput) {
   return api("/api/expenses", {
     method: "POST",
     body: { ...input, currency: input.currency || "USD" },

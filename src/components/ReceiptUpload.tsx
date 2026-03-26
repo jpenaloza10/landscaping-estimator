@@ -91,9 +91,9 @@ export default function ReceiptUpload({ projectId, onCreated }: ReceiptUploadPro
 
       // Reset file input
       setFile(null);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setMsg(e.message || "Upload failed");
+      setMsg(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setLoading(false);
     }

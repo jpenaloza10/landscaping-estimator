@@ -29,9 +29,9 @@ export default function AiAssistantPanel({ estimateId }: Props) {
     try {
       const data = await fn();
       setter(data);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setError(e?.message || "AI error");
+      setError(e instanceof Error ? e.message : "AI error");
     } finally {
       setLoading(null);
     }

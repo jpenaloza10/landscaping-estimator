@@ -1,7 +1,6 @@
 import "dotenv/config";
 import express, { Request, Response } from "express";
 import cors from "cors";
-import bcrypt from "bcryptjs";
 import projectsRouter from "./routes/projects";
 import assembliesRouter from "./routes/assemblies";
 import pricingRouter from "./routes/pricing";
@@ -16,14 +15,8 @@ import aiRouter from "./routes/ai";
 import dashboardRouter from "./routes/dashboard";
 import proposalsRouter from "./routes/proposals";
 import deliveryRouter from "./routes/delivery";
-import { prisma } from "./prisma";
-import { SafeUser } from "./types/user";
-import { signToken, auth as authMiddleware } from "./auth";
-
-// Supabase admin client for Storage signing
-import { createClient } from "@supabase/supabase-js";
-// Validation
-import { z } from "zod";
+import authRouter from "./routes/auth";
+import uploadsRouter from "./routes/uploads";
 
 const app = express();
 
@@ -95,6 +88,8 @@ app.get("/", (_req, res) => {
 
 /* -------------------------------- ROUTERS -------------------------------- */
 
+app.use("/api/auth", authRouter);
+app.use("/api/uploads", uploadsRouter);
 app.use("/api/projects", projectsRouter);
 app.use("/api/assemblies", assembliesRouter);
 app.use("/api/pricing", pricingRouter);
@@ -116,179 +111,24 @@ app.get("/api/assemblies/ping", (_req, res) => {
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// Handy for debugging CORS/headers in prod
-app.all("/api/debug/headers", (req, res) => {
-  res.json({
-    method: req.method,
-    path: req.path,
-    origin: req.headers.origin || null,
-    authorization: req.headers.authorization || null,
-    host: req.headers.host || null,
-    "access-control-request-method": req.headers["access-control-request-method"] || null,
-    "access-control-request-headers": req.headers["access-control-request-headers"] || null,
+// Debug endpoint — development only, never expose in production
+if (process.env.NODE_ENV !== "production") {
+  app.all("/api/debug/headers", (req, res) => {
+    res.json({
+      method: req.method,
+      path: req.path,
+      origin: req.headers.origin || null,
+      host: req.headers.host || null,
+      "access-control-request-method": req.headers["access-control-request-method"] || null,
+      "access-control-request-headers": req.headers["access-control-request-headers"] || null,
+    });
   });
-});
+}
 
-/* --------------------------------- AUTH --------------------------------- */
-
-type SignupBody = { name?: string; email?: string; password?: string };
-
-app.post("/api/auth/signup", async (req: Request<{}, {}, SignupBody>, res: Response) => {
-  try {
-    const { name, email, password } = req.body;
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: "Missing fields" });
-    }
-
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return res.status(409).json({ error: "Email already in use" });
-    }
-
-    const created = await prisma.user.create({
-      data: { name, email, password_hash: await bcrypt.hash(password, 10) },
-      select: { id: true, name: true, email: true },
-    });
-
-    // user.id is Int — token will carry a number
-    const token = signToken({ userId: created.id, email: created.email });
-    const user: SafeUser = created;
-
-    return res.status(201).json({ token, user });
-  } catch (e) {
-    console.error("Signup error:", e);
-    return res.status(500).json({ error: "Signup failed" });
-  }
-});
-
-type LoginBody = { email?: string; password?: string };
-
-const loginHandler = async (req: Request<{}, {}, LoginBody>, res: Response) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: "Missing fields" });
-    }
-
-    const userFull = await prisma.user.findUnique({ where: { email } });
-    if (!userFull) return res.status(401).json({ error: "Invalid credentials" });
-
-    const ok = await bcrypt.compare(password, userFull.password_hash);
-    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
-
-    const token = signToken({ userId: userFull.id, email: userFull.email });
-    const { password_hash: _ignored, ...rest } = userFull;
-    const user: SafeUser = { id: rest.id, name: rest.name, email: rest.email };
-
-    return res.json({ token, user });
-  } catch (e) {
-    console.error("Login error:", e);
-    return res.status(500).json({ error: "Login failed" });
-  }
-};
-
-app.post("/api/auth/login", loginHandler);
-app.post("/api/login", loginHandler);
-
-app.get("/api/auth/me", authMiddleware, async (req: Request, res: Response) => {
-  // auth middleware sets req.user.id (string)
-  if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
-
-  const userId = Number(req.user.id);
-  if (!Number.isFinite(userId)) {
-    return res.status(400).json({ error: "Invalid user id on request" });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, name: true, email: true },
-  });
-
-  if (!user) return res.status(404).json({ error: "User not found" });
-  return res.json({ user });
-});
-
-/* --------------------------- SUPABASE: UPLOADS -------------------------- */
-
-const SUPABASE_URL = process.env.SUPABASE_URL!;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || "project-uploads";
-
-// Quick env sanity
-["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].forEach((k) => {
-  if (!process.env[k]) {
-    console.warn(`[WARN] Missing env ${k}`);
-  }
-});
-
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-const signUploadSchema = z.object({
-  // project.id is Int
-  project_id: z.coerce.number().int().positive(),
-  filename: z.string().min(1).max(180),
-  mime_type: z.string().optional(),
-});
-
-/**
- * Client POSTs { project_id, filename, mime_type }
- * Response: { signedUrl, token, path, mime_type, expiresIn }
- * Then client must POST multipart (token + file) to signedUrl,
- * or use supabase-js: storage.from(bucket).uploadToSignedUrl(path, token, file)
- */
-app.post("/api/uploads/sign", authMiddleware, async (req: Request, res: Response) => {
-  try {
-    if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
-
-    const parsed = signUploadSchema.safeParse(req.body ?? {});
-    if (!parsed.success) {
-      return res
-        .status(400)
-        .json({ error: "Invalid payload", details: parsed.error.flatten() });
-    }
-    const { project_id, filename, mime_type } = parsed.data;
-
-    const numericUserId = Number(req.user.id);
-    if (!Number.isFinite(numericUserId)) {
-      return res.status(400).json({ error: "Invalid user id on request" });
-    }
-
-    // Verify the project belongs to this user
-    const owns = await prisma.project.findFirst({
-      where: { id: project_id, user_id: numericUserId },
-      select: { id: true },
-    });
-    if (!owns) return res.status(404).json({ error: "Project not found" });
-
-    // Storage path: <project_id>/<timestamp>-<filename>
-    const key = `${project_id}/${Date.now()}-${filename}`;
-
-    // Supabase signed upload URL & token (v2)
-    // @ts-ignore - suppress version typing differences
-    const { data, error } = await supabaseAdmin.storage
-      .from(SUPABASE_BUCKET)
-      .createSignedUploadUrl(key);
-
-    if (error) {
-      console.error("Supabase sign error:", error);
-      return res.status(500).json({ error: "Failed to sign upload URL" });
-    }
-
-    // Supabase default expiry is ~2 minutes; surface a hint to client
-    return res.json({
-      signedUrl: data.signedUrl,
-      token: data.token,
-      path: key,
-      mime_type: mime_type || "application/octet-stream",
-      expiresIn: 120,
-    });
-  } catch (e) {
-    console.error("Sign upload error:", e);
-    return res.status(500).json({ error: "Failed to sign upload URL" });
-  }
-});
+/* Auth and upload routes are handled by their dedicated routers:
+   /api/auth  → src/routes/auth.ts
+   /api/uploads → src/routes/uploads.ts
+*/
 
 /* --------------------------------- START -------------------------------- */
 

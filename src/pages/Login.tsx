@@ -34,8 +34,8 @@ export default function Login() {
         return;
       }
       navigate(from, { replace: true });
-    } catch (e: any) {
-      setErr(e?.message ?? "Authentication failed.");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Authentication failed.");
     } finally {
       setLoading(false);
     }

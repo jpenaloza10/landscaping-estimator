@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import Projects from "./pages/Projects";
 import ProjectWizard from "./pages/ProjectWizard";
+import ProjectDetail from "./pages/ProjectDetail";
 import { useAuth } from "./auth/AuthContext";
 
 export default function App() {
@@ -32,6 +33,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <ProjectWizard />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/projects/:id"
+            element={
+              <RequireAuth>
+                <ProjectDetail />
               </RequireAuth>
             }
           />
@@ -186,12 +195,8 @@ function AppShell({ children }: { children: ReactNode }) {
 
       {/* CONTENT */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-        <main id="main" className="grid gap-6 md:grid-cols-3">
-          <section className="md:col-span-2 bg-white rounded-2xl shadow p-4">{children}</section>
-          <aside className="bg-white rounded-2xl shadow p-4 hidden md:block">
-            <h2 className="font-semibold mb-2">Project Summary</h2>
-            <p className="text-sm text-slate-600">Quick stats, recent uploads, etc.</p>
-          </aside>
+        <main id="main">
+          {children}
         </main>
       </div>
 

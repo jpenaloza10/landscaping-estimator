@@ -100,11 +100,19 @@ r.post("/", async (req: Request, res: Response) => {
 
     let subtotal = 0;
 
+    // Batch-fetch all assemblies in a single query to avoid N+1 DB hits
+    const assemblyIds = lines.map((l) => l.assemblyId);
+    const assembliesById = new Map(
+      (
+        await prisma.assembly.findMany({
+          where: { id: { in: assemblyIds } },
+          include: { items: true },
+        })
+      ).map((a) => [a.id, a])
+    );
+
     for (const line of lines) {
-      const assembly = await prisma.assembly.findUnique({
-        where: { id: line.assemblyId },
-        include: { items: true },
-      });
+      const assembly = assembliesById.get(line.assemblyId);
       if (!assembly) continue;
 
       const inputs = line.inputs || {};
@@ -256,11 +264,17 @@ r.post("/", async (req: Request, res: Response) => {
         : { total: 0, includedInSubtotal: false },
       region: { key: regionKey, factor: regionFactor },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err);
+    // Return 400 only for known client-input errors; all others are 500
+    const message = err instanceof Error ? err.message : "Failed to create estimate";
+    const isClientError =
+      message.toLowerCase().includes("invalid") ||
+      message.toLowerCase().includes("not found") ||
+      message.toLowerCase().includes("required");
     res
-      .status(400)
-      .json({ error: err?.message ?? "Bad request while creating estimate" });
+      .status(isClientError ? 400 : 500)
+      .json({ error: message });
   }
 });
 
@@ -302,10 +316,10 @@ r.post("/:id/finalize", async (req: Request, res: Response) => {
     // });
 
     res.json({ ok: true, snapshot });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err);
-    res.status(400).json({
-      error: err?.message ?? "Failed to finalize estimate and create snapshot",
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Failed to finalize estimate and create snapshot",
     });
   }
 });

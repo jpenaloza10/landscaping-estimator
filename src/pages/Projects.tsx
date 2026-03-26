@@ -32,13 +32,13 @@ export default function Projects() {
         });
         const list = Array.isArray(data) ? data : data.projects;
         setProjects(Array.isArray(list) ? list : []);
-      } catch (e: any) {
-        if (e?.name === "AbortError") return;
+      } catch (e: unknown) {
+        if ((e as { name?: string })?.name === "AbortError") return;
         if (e instanceof ApiError && e.status === 401) {
           navigate("/", { replace: true });
           return;
         }
-        setErr(e?.message ?? "Failed to fetch projects");
+        setErr(e instanceof Error ? e.message : "Failed to fetch projects");
       } finally {
         setLoadingList(false);
       }
