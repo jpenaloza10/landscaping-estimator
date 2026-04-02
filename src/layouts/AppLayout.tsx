@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 export default function AppLayout() {
-  const [open, setOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
 
-  // Friendly display name for header (SafeUser: { id, name, email })
   const displayName = user?.name ?? user?.email ?? "Account";
 
   async function handleSignOut() {
@@ -21,146 +20,121 @@ export default function AppLayout() {
     }
   }
 
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `font-sans text-[11px] font-semibold tracking-[0.18em] uppercase transition-colors ${
+      isActive ? "text-brand-orange" : "text-brand-green hover:text-brand-orange"
+    }`;
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b bg-white">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <button
-              className="rounded-md p-2 hover:bg-slate-100 lg:hidden"
-              aria-label="Toggle menu"
-              onClick={() => setOpen(v => !v)}
-            >
-              ☰
-            </button>
-            <span className="font-semibold">Landscaping Estimator</span>
-          </div>
+    <div
+      className="min-h-screen bg-brand-green text-brand-cream antialiased"
+      style={{ backgroundColor: "#1B3A1E", color: "#F4EFE4" }}
+    >
+      {/* ── NAV ── */}
+      <header className="sticky top-0 z-50 bg-brand-cream border-b border-brand-green/10">
+        <div className="mx-auto flex h-[60px] max-w-7xl items-center justify-between px-4 sm:px-8">
 
-          {/* Desktop nav */}
-          <nav className="hidden items-center gap-4 text-sm lg:flex">
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "font-medium underline" : "hover:underline"
-              }
-              to="/dashboard"
-            >
-              Dashboard
-            </NavLink>
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "font-medium underline" : "hover:underline"
-              }
-              to="/projects"
-            >
-              Projects
-            </NavLink>
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "font-medium underline" : "hover:underline"
-              }
-              to="/expenses"
-            >
-              Expenses
-            </NavLink>
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "font-medium underline" : "hover:underline"
-              }
-              to="/account"
-            >
-              Account
-            </NavLink>
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "font-medium underline" : "hover:underline"
-              }
-              to="/assemblies"
-            >
-              Assemblies
-            </NavLink>
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "font-medium underline" : "hover:underline"
-              }
-              to="/estimate"
-            >
-              Estimator
-            </NavLink>
-
-            {/* Divider */}
-            <span className="mx-2 h-5 w-px bg-slate-200" />
-
-            {/* Account + Sign Out */}
-            <span
-              className="max-w-[200px] truncate text-slate-600"
-              title={displayName}
-            >
-              {displayName}
-            </span>
-            <button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className="rounded-lg border px-3 py-2 text-red-600 hover:bg-gray-100 disabled:opacity-60"
-            >
-              {signingOut ? "Signing out…" : "Sign Out"}
-            </button>
+          {/* Left nav */}
+          <nav className="hidden lg:flex items-center gap-8" aria-label="Primary left">
+            <NavLink to="/dashboard" className={navLinkClass}>Dashboard</NavLink>
+            <NavLink to="/projects"  className={navLinkClass}>Projects</NavLink>
+            <NavLink to="/estimate"  className={navLinkClass}>Estimator</NavLink>
           </nav>
+
+          {/* Centre wordmark */}
+          <Link
+            to="/dashboard"
+            className="font-serif text-lg font-bold italic text-brand-green tracking-wide absolute left-1/2 -translate-x-1/2"
+          >
+            Landscaping Estimator
+          </Link>
+
+          {/* Right nav */}
+          <nav className="hidden lg:flex items-center gap-8" aria-label="Primary right">
+            <NavLink to="/expenses" className={navLinkClass}>Expenses</NavLink>
+
+            <div className="flex items-center gap-4 border-l border-brand-green/15 pl-6">
+              <span
+                className="font-sans text-[10px] tracking-widest uppercase text-brand-green/60 max-w-[140px] truncate"
+                title={displayName}
+              >
+                {displayName}
+              </span>
+              <button
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange transition-colors disabled:opacity-50"
+              >
+                {signingOut ? "Signing out…" : "Sign Out"}
+              </button>
+            </div>
+          </nav>
+
+          {/* Mobile hamburger */}
+          <button
+            className="lg:hidden ml-auto text-brand-green p-2"
+            aria-label="Toggle menu"
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 7h16M4 12h16M4 17h16"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
         </div>
 
         {/* Mobile drawer */}
-        {open && (
-          <div className="border-t bg-white lg:hidden">
-            <div className="mx-auto max-w-7xl px-4 py-3">
-              <div className="flex flex-col gap-3">
-                <NavLink to="/dashboard" onClick={() => setOpen(false)}>
-                  Dashboard
-                </NavLink>
-                <NavLink to="/projects" onClick={() => setOpen(false)}>
-                  Projects
-                </NavLink>
-                <NavLink to="/expenses" onClick={() => setOpen(false)}>
-                  Expenses
-                </NavLink>
-                <NavLink to="/account" onClick={() => setOpen(false)}>
-                  Account
-                </NavLink>
-                <NavLink to="/assemblies" onClick={() => setOpen(false)}>
-                  Assemblies
-                </NavLink>
-                <NavLink to="/estimate" onClick={() => setOpen(false)}>
-                  Estimator
-                </NavLink>
-
-                <div className="mt-2 border-t pt-2 text-sm text-slate-600">
+        {mobileOpen && (
+          <div className="lg:hidden border-t border-brand-green/10 bg-brand-cream">
+            <nav className="mx-auto max-w-7xl px-4 py-4 flex flex-col gap-4">
+              <NavLink to="/dashboard" onClick={() => setMobileOpen(false)} className={navLinkClass}>Dashboard</NavLink>
+              <NavLink to="/projects"  onClick={() => setMobileOpen(false)} className={navLinkClass}>Projects</NavLink>
+              <NavLink to="/estimate"  onClick={() => setMobileOpen(false)} className={navLinkClass}>Estimator</NavLink>
+              <NavLink to="/expenses"  onClick={() => setMobileOpen(false)} className={navLinkClass}>Expenses</NavLink>
+              <div className="border-t border-brand-green/10 pt-3 mt-1 space-y-3">
+                <p className="font-sans text-[10px] tracking-widest uppercase text-brand-green/50 truncate">
                   {displayName}
-                </div>
+                </p>
                 <button
-                  onClick={async () => {
-                    setOpen(false);
-                    await handleSignOut();
-                  }}
+                  onClick={() => { setMobileOpen(false); void handleSignOut(); }}
                   disabled={signingOut}
-                  className="rounded-lg border px-3 py-2 text-left text-sm text-red-600 hover:bg-gray-100 disabled:opacity-60"
+                  className="font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange transition-colors disabled:opacity-50"
                 >
                   {signingOut ? "Signing out…" : "Sign Out"}
                 </button>
               </div>
-            </div>
+            </nav>
           </div>
         )}
       </header>
 
-      {/* Page container */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Default responsive grid wrapper that pages can rely on */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Outlet />
-        </div>
+      {/* ── CONTENT ── */}
+      <main
+        className="mx-auto max-w-7xl px-4 sm:px-8 py-8"
+        style={{ minHeight: "calc(100vh - 124px)" }}
+      >
+        <Outlet />
       </main>
 
-      <footer className="py-6 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} Landscaping Estimator
+      {/* ── FOOTER ── */}
+      <footer
+        className="border-t border-brand-cream/10 py-6 px-8 flex flex-wrap items-center justify-between gap-4"
+        style={{ backgroundColor: "#111E12" }}
+      >
+        <span className="font-serif text-base italic font-bold text-brand-cream">
+          Landscaping Estimator
+        </span>
+        <span
+          className="font-sans text-[11px] tracking-widest uppercase opacity-50"
+          style={{ color: "#D9D1C0" }}
+        >
+          © {new Date().getFullYear()} · All rights reserved
+        </span>
       </footer>
     </div>
   );
