@@ -139,4 +139,96 @@ r.post("/", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/projects/:id
+ * Return a single project (must belong to the authenticated user)
+ */
+r.get("/:id", async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (userId == null) return res.status(401).json({ error: "Unauthorized" });
+
+    const numericUserId = Number(userId);
+    const projectId = Number(req.params.id);
+    if (!Number.isFinite(numericUserId) || !Number.isFinite(projectId)) {
+      return res.status(400).json({ error: "Invalid id" });
+    }
+
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, user_id: numericUserId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        location: true,
+        address: true,
+        city: true,
+        state: true,
+        postal_code: true,
+        country: true,
+        latitude: true,
+        longitude: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+
+    if (!project) return res.status(404).json({ error: "Project not found" });
+    return res.json(project);
+  } catch (e) {
+    console.error("[projects.get/:id]", e);
+    return res.status(500).json({ error: "Failed to load project" });
+  }
+});
+
+/**
+ * GET /api/projects/:id/estimates
+ * List all estimates for a project (must belong to the authenticated user)
+ */
+r.get("/:id/estimates", async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (userId == null) return res.status(401).json({ error: "Unauthorized" });
+
+    const numericUserId = Number(userId);
+    const projectId = Number(req.params.id);
+    if (!Number.isFinite(numericUserId) || !Number.isFinite(projectId)) {
+      return res.status(400).json({ error: "Invalid id" });
+    }
+
+    // Verify ownership
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, user_id: numericUserId },
+      select: { id: true },
+    });
+
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const estimates = await prisma.estimate.findMany({
+      where: { projectId },
+      select: {
+        id: true,
+        subtotal: true,
+        tax: true,
+        total: true,
+        location: true,
+        createdAt: true,
+        lines: {
+          select: {
+            id: true,
+            assemblyId: true,
+            lineTotal: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.json({ estimates });
+  } catch (e) {
+    console.error("[projects.get/:id/estimates]", e);
+    return res.status(500).json({ error: "Failed to load estimates" });
+  }
+});
+
 export default r;

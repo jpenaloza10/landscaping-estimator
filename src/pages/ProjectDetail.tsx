@@ -7,7 +7,8 @@ type Estimate = {
   subtotal?: number;
   tax?: number;
   total?: number;
-  created_at?: string;
+  createdAt?: string;   // Prisma camelCase
+  created_at?: string;  // fallback alias
 };
 
 export default function ProjectDetail() {
@@ -123,9 +124,9 @@ export default function ProjectDetail() {
                   <p className="font-serif text-sm font-bold italic text-brand-cream">
                     Estimate #{String(est.id).slice(-6)}
                   </p>
-                  {est.created_at && (
+                  {(est.createdAt ?? est.created_at) && (
                     <p className="font-sans text-[10px] text-brand-cream-dim mt-0.5 tracking-wide">
-                      {new Date(est.created_at).toLocaleString()}
+                      {new Date((est.createdAt ?? est.created_at)!).toLocaleString()}
                     </p>
                   )}
                 </div>
