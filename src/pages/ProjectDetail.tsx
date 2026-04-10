@@ -1,14 +1,36 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { authedFetch, ApiError, type Project } from "../lib/api";
+import {
+  authedFetch,
+  updateEstimateStatus,
+  ApiError,
+  type Project,
+  type EstimateStatus,
+} from "../lib/api";
 
 type Estimate = {
   id: string | number;
+  title?: string | null;
+  status?: EstimateStatus;
   subtotal?: number;
   tax?: number;
   total?: number;
-  createdAt?: string;   // Prisma camelCase
-  created_at?: string;  // fallback alias
+  createdAt?: string;
+  created_at?: string;
+};
+
+const STATUS_OPTS: { value: EstimateStatus; label: string }[] = [
+  { value: "DRAFT",    label: "Draft"    },
+  { value: "SENT",     label: "Sent"     },
+  { value: "APPROVED", label: "Approved" },
+  { value: "REJECTED", label: "Rejected" },
+];
+
+const STATUS_COLORS: Record<string, string> = {
+  DRAFT:    "text-brand-cream/50 border-brand-cream/20",
+  SENT:     "text-blue-300 border-blue-400/40",
+  APPROVED: "text-emerald-300 border-emerald-400/40",
+  REJECTED: "text-brand-orange-light border-brand-orange/40",
 };
 
 export default function ProjectDetail() {
@@ -19,6 +41,7 @@ export default function ProjectDetail() {
   const [estimates, setEstimates] = useState<Estimate[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -61,6 +84,22 @@ export default function ProjectDetail() {
 
     return () => ac.abort();
   }, [id, navigate]);
+
+  async function handleStatusChange(estimateId: string, status: EstimateStatus) {
+    setUpdatingId(estimateId);
+    try {
+      const { estimate: updated } = await updateEstimateStatus(estimateId, status);
+      setEstimates((prev) =>
+        prev.map((e) =>
+          String(e.id) === estimateId ? { ...e, status: updated.status } : e
+        )
+      );
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to update status");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -118,32 +157,66 @@ export default function ProjectDetail() {
           <p className="font-sans text-xs text-brand-cream-dim">No estimates yet for this project.</p>
         ) : (
           <ul className="divide-y divide-brand-cream/10">
-            {estimates.map((est) => (
-              <li key={String(est.id)} className="py-3 flex items-center justify-between gap-3 first:pt-0 last:pb-0">
-                <div>
-                  <p className="font-serif text-sm font-bold italic text-brand-cream">
-                    Estimate #{String(est.id).slice(-6)}
-                  </p>
-                  {(est.createdAt ?? est.created_at) && (
-                    <p className="font-sans text-[10px] text-brand-cream-dim mt-0.5 tracking-wide">
-                      {new Date((est.createdAt ?? est.created_at)!).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-                <div className="text-right">
-                  {est.total != null && (
-                    <p className="font-serif text-lg font-black italic text-brand-orange-light">
-                      ${Number(est.total).toFixed(2)}
-                    </p>
-                  )}
-                  {est.tax != null && (
-                    <p className="font-sans text-[10px] text-brand-cream-dim">
-                      incl. ${Number(est.tax).toFixed(2)} tax
-                    </p>
-                  )}
-                </div>
-              </li>
-            ))}
+            {estimates.map((est) => {
+              const estId = String(est.id);
+              const isUpdating = updatingId === estId;
+              const status = (est.status ?? "DRAFT") as EstimateStatus;
+              const colorClass = STATUS_COLORS[status] ?? STATUS_COLORS.DRAFT;
+
+              return (
+                <li key={estId} className="py-4 first:pt-0 last:pb-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    {/* Left — title + date */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-serif text-base font-bold italic text-brand-cream leading-snug">
+                        {est.title || `Estimate #${estId.slice(-6)}`}
+                      </p>
+                      {(est.createdAt ?? est.created_at) && (
+                        <p className="font-sans text-[10px] text-brand-cream-dim mt-0.5 tracking-wide">
+                          {new Date((est.createdAt ?? est.created_at)!).toLocaleDateString("en-US", {
+                            month: "short", day: "numeric", year: "numeric",
+                          })}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Right — total + status select */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      {est.total != null && (
+                        <p className="font-serif text-lg font-black italic text-brand-orange-light">
+                          ${Number(est.total).toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      )}
+
+                      {/* Status selector */}
+                      <select
+                        disabled={isUpdating}
+                        value={status}
+                        onChange={(e) =>
+                          handleStatusChange(estId, e.target.value as EstimateStatus)
+                        }
+                        className={`bg-transparent border rounded-sm px-2 py-1 text-[10px] font-sans font-semibold tracking-wide uppercase focus:outline-none focus:border-brand-cream/60 transition-colors disabled:opacity-50 cursor-pointer ${colorClass}`}
+                      >
+                        {STATUS_OPTS.map((o) => (
+                          <option key={o.value} value={o.value} className="bg-[#1B3A1E] text-brand-cream normal-case">
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+
+                      {isUpdating && (
+                        <span className="font-sans text-[10px] text-brand-cream-dim animate-pulse">
+                          …
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

@@ -52,6 +52,7 @@ export default function EstimateWizard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
 
+  const [title, setTitle] = useState("");
   const [area, setArea] = useState<number>(0);
   const [zip, setZip] = useState("");
   const [state, setState] = useState("");
@@ -123,6 +124,7 @@ export default function EstimateWizard() {
     try {
       const est = (await createEstimate({
         projectId: activeProjectId,
+        title: title.trim() || undefined,
         location: { zip, state },
         lines: [{ assemblyId, inputs: { area } }],
       })) as Estimate;
@@ -158,6 +160,19 @@ export default function EstimateWizard() {
       <div className="brand-card">
         <p className="brand-eyebrow mb-1">Build Your</p>
         <h2 className="font-serif text-3xl font-black italic text-brand-cream mb-6">Estimate</h2>
+
+        {/* Estimate Title */}
+        <div className="mb-5">
+          <label className={labelClass}>Estimate Title <span className="normal-case font-normal opacity-50">(optional)</span></label>
+          <input
+            className="brand-input"
+            type="text"
+            placeholder="e.g. Phase 1 – Backyard Patio"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={120}
+          />
+        </div>
 
         {/* Project selector */}
         <div className="mb-5">

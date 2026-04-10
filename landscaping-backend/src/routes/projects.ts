@@ -208,11 +208,14 @@ r.get("/:id/estimates", async (req: Request, res: Response) => {
       where: { projectId },
       select: {
         id: true,
+        title: true,
+        status: true,
         subtotal: true,
         tax: true,
         total: true,
         location: true,
         createdAt: true,
+        updatedAt: true,
         lines: {
           select: {
             id: true,

@@ -11,9 +11,11 @@ import { createBudgetSnapshot } from "../services/budget";
 
 const r = Router();
 
+const VALID_STATUSES = ["DRAFT", "SENT", "APPROVED", "REJECTED"] as const;
+type EstimateStatus = (typeof VALID_STATUSES)[number];
+
 /**
  * Helper: get numeric user id from req.user.id
- * (auth middleware sets req.user.id as a string)
  */
 function getUserId(req: Request): number | null {
   const raw = req.user?.id;
@@ -27,7 +29,6 @@ type LocationInput = {
   state?: string;
   city?: string;
   country?: string;
-  // Optional for delivery; if not provided, delivery is skipped
   lat?: number;
   lng?: number;
   vendorLat?: number;
@@ -35,7 +36,8 @@ type LocationInput = {
 };
 
 type CreateEstimateInput = {
-  projectId: number | string; // allow string from client; we'll coerce to number
+  projectId: number | string;
+  title?: string;
   location?: LocationInput;
   lines: Array<{ assemblyId: string; inputs: Record<string, number> }>;
 };
@@ -49,6 +51,48 @@ function coerceProjectId(id: number | string): number {
 // All estimate routes require auth
 r.use(authMiddleware);
 
+// === List ALL estimates for the authenticated user (across all projects) ===
+r.get("/", async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (userId == null) return res.status(401).json({ error: "Unauthorized" });
+
+    const estimates = await prisma.estimate.findMany({
+      where: {
+        project: { user_id: userId },
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        subtotal: true,
+        tax: true,
+        total: true,
+        location: true,
+        createdAt: true,
+        updatedAt: true,
+        project: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            state: true,
+          },
+        },
+        lines: {
+          select: { id: true, assemblyId: true, lineTotal: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.json({ estimates });
+  } catch (err: unknown) {
+    console.error("[estimates.get /]", err);
+    return res.status(500).json({ error: "Failed to load estimates" });
+  }
+});
+
 // === Create & calculate estimate ===
 r.post("/", async (req: Request, res: Response) => {
   try {
@@ -57,7 +101,7 @@ r.post("/", async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { projectId, location, lines } = req.body as CreateEstimateInput;
+    const { projectId, title, location, lines } = req.body as CreateEstimateInput;
 
     if (!projectId || !Array.isArray(lines) || lines.length === 0) {
       return res.status(400).json({ error: "Invalid payload" });
@@ -74,7 +118,7 @@ r.post("/", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    // Regional factor (applies when we use index/baseline pricing or for labor)
+    // Regional factor
     const regionKey = makeRegionKey(location);
     const regionFactor = await getRegionalFactor(regionKey);
 
@@ -84,11 +128,10 @@ r.post("/", async (req: Request, res: Response) => {
       unitCost: number;
       qty: number;
       extended: number;
-      // provenance/debug
-      provider?: string; // SupplierCSV, RetailX, CityIndex, LaborRegional, RegionalizedIndex, DeliveryEstimator
-      source?: string; // supplier | retail | marketplace | index | baseline | delivery
-      fetchedAt?: string; // ISO timestamp for live prices
-      deliveryShare?: number; // proportional delivery allocated to this item
+      provider?: string;
+      source?: string;
+      fetchedAt?: string;
+      deliveryShare?: number;
     };
 
     const calcLines: Array<{
@@ -100,7 +143,6 @@ r.post("/", async (req: Request, res: Response) => {
 
     let subtotal = 0;
 
-    // Batch-fetch all assemblies in a single query to avoid N+1 DB hits
     const assemblyIds = lines.map((l) => l.assemblyId);
     const assembliesById = new Map(
       (
@@ -130,7 +172,6 @@ r.post("/", async (req: Request, res: Response) => {
         const isLabor = it.unit.toLowerCase() === "hr";
 
         if (!isLabor) {
-          // Fallback material slug (ideally replace with materialId on AssemblyItem)
           const materialSlug = kebab(`${assembly.slug}-${it.name}`);
           const live = await resolveUnitPrice({
             materialSlug,
@@ -148,43 +189,26 @@ r.post("/", async (req: Request, res: Response) => {
               new Date((live as any).fetchedAt).toISOString?.() ??
               undefined;
           } else {
-            // No live price: apply regional factor to your baseline/index
             unitCost = unitCost * (regionFactor || 1);
             provider = "RegionalizedIndex";
             source = "index";
           }
         } else {
-          // Labor: scale by regional factor
           unitCost = unitCost * (regionFactor || 1);
           provider = "LaborRegional";
           source = "index";
         }
 
         const extended = qty * unitCost;
-        items.push({
-          name: it.name,
-          unit: it.unit,
-          unitCost,
-          qty,
-          extended,
-          provider,
-          source,
-          fetchedAt,
-        });
+        items.push({ name: it.name, unit: it.unit, unitCost, qty, extended, provider, source, fetchedAt });
       }
 
       const lineTotal = items.reduce((acc, curr) => acc + curr.extended, 0);
       subtotal += lineTotal;
-
-      calcLines.push({
-        assemblyId: assembly.id,
-        inputs,
-        items,
-        lineTotal,
-      });
+      calcLines.push({ assemblyId: assembly.id, inputs, items, lineTotal });
     }
 
-    // === Delivery Cost Estimator & allocation (optional) ===
+    // === Delivery Cost ===
     let deliveryTotal = 0;
     const haveCoords =
       location?.vendorLat != null &&
@@ -203,16 +227,10 @@ r.post("/", async (req: Request, res: Response) => {
       if (linesSum > 0 && deliveryTotal > 0) {
         for (const l of calcLines) {
           const share = (l.lineTotal / linesSum) * deliveryTotal;
-
-          // annotate each existing item with its per-item share
           l.items = l.items.map((it) => ({
             ...it,
-            deliveryShare: Number(
-              ((it.extended / l.lineTotal) * share).toFixed(2)
-            ),
+            deliveryShare: Number(((it.extended / l.lineTotal) * share).toFixed(2)),
           }));
-
-          // add explicit delivery item
           l.items.push({
             name: "Delivery (allocated)",
             unit: "each",
@@ -222,11 +240,8 @@ r.post("/", async (req: Request, res: Response) => {
             provider: "DeliveryEstimator",
             source: "delivery",
           });
-
           l.lineTotal += share;
         }
-
-        // delivery is included in subtotal (adjust if your tax rules differ)
         subtotal += deliveryTotal;
       }
     }
@@ -241,6 +256,8 @@ r.post("/", async (req: Request, res: Response) => {
     const estimate = await prisma.estimate.create({
       data: {
         projectId: projectIdNum,
+        title: title?.trim() || null,
+        status: "DRAFT",
         location,
         subtotal,
         tax,
@@ -248,7 +265,7 @@ r.post("/", async (req: Request, res: Response) => {
         lines: {
           create: calcLines.map((l) => ({
             ...l,
-            items: l.items as any, // JSON column
+            items: l.items as any,
             lineTotal: l.lineTotal,
           })),
         },
@@ -266,60 +283,113 @@ r.post("/", async (req: Request, res: Response) => {
     });
   } catch (err: unknown) {
     console.error(err);
-    // Return 400 only for known client-input errors; all others are 500
     const message = err instanceof Error ? err.message : "Failed to create estimate";
     const isClientError =
       message.toLowerCase().includes("invalid") ||
       message.toLowerCase().includes("not found") ||
       message.toLowerCase().includes("required");
-    res
-      .status(isClientError ? 400 : 500)
-      .json({ error: message });
+    res.status(isClientError ? 400 : 500).json({ error: message });
+  }
+});
+
+// === Update estimate status ===
+r.patch("/:id/status", async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (userId == null) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id } = req.params;
+    const { status } = req.body as { status: string };
+
+    if (!status || !VALID_STATUSES.includes(status as EstimateStatus)) {
+      return res.status(400).json({
+        error: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`,
+      });
+    }
+
+    // Verify the estimate belongs to this user
+    const existing = await prisma.estimate.findFirst({
+      where: { id, project: { user_id: userId } },
+      select: { id: true },
+    });
+
+    if (!existing) return res.status(404).json({ error: "Estimate not found" });
+
+    const updated = await prisma.estimate.update({
+      where: { id },
+      data: { status },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        total: true,
+        updatedAt: true,
+      },
+    });
+
+    return res.json({ estimate: updated });
+  } catch (err: unknown) {
+    console.error("[estimates.patch/:id/status]", err);
+    return res.status(500).json({ error: "Failed to update estimate status" });
+  }
+});
+
+// === Update estimate title ===
+r.patch("/:id/title", async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (userId == null) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id } = req.params;
+    const { title } = req.body as { title?: string };
+
+    const existing = await prisma.estimate.findFirst({
+      where: { id, project: { user_id: userId } },
+      select: { id: true },
+    });
+
+    if (!existing) return res.status(404).json({ error: "Estimate not found" });
+
+    const updated = await prisma.estimate.update({
+      where: { id },
+      data: { title: title?.trim() || null },
+      select: { id: true, title: true, updatedAt: true },
+    });
+
+    return res.json({ estimate: updated });
+  } catch (err: unknown) {
+    console.error("[estimates.patch/:id/title]", err);
+    return res.status(500).json({ error: "Failed to update estimate title" });
   }
 });
 
 // === Finalize estimate & create Budget Snapshot ===
-// Call this when the user approves/selects this estimate as the project baseline.
 r.post("/:id/finalize", async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    if (userId == null) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    if (userId == null) return res.status(401).json({ error: "Unauthorized" });
 
     const { id } = req.params;
 
-    // Load estimate that belongs to this user's project
     const estimate = await prisma.estimate.findFirst({
-      where: {
-        id,
-        project: {
-          user_id: userId,
-        },
-      },
+      where: { id, project: { user_id: userId } },
     });
 
-    if (!estimate) {
-      return res.status(404).json({ error: "Estimate not found" });
-    }
+    if (!estimate) return res.status(404).json({ error: "Estimate not found" });
 
-    // Create a budget snapshot tied to this estimate + project
-    const snapshot = await createBudgetSnapshot(
-      estimate.projectId as any,
-      estimate.id
-    );
+    const snapshot = await createBudgetSnapshot(estimate.projectId as any, estimate.id);
 
-    // Optional: if you add a `status` column on Estimate, update it here:
-    // await prisma.estimate.update({
-    //   where: { id },
-    //   data: { status: "FINALIZED" },
-    // });
+    // Mark as APPROVED when finalized
+    await prisma.estimate.update({
+      where: { id },
+      data: { status: "APPROVED" },
+    });
 
     res.json({ ok: true, snapshot });
   } catch (err: unknown) {
     console.error(err);
     res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to finalize estimate and create snapshot",
+      error: err instanceof Error ? err.message : "Failed to finalize estimate",
     });
   }
 });

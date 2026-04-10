@@ -237,6 +237,25 @@ export async function getDashboardProjectsFinancial(): Promise<{
 /* =========================
    Assemblies + Estimates
    ========================= */
+export type EstimateStatus = "DRAFT" | "SENT" | "APPROVED" | "REJECTED";
+
+export interface EstimateSummary {
+  id: string;
+  title?: string | null;
+  status: EstimateStatus;
+  subtotal?: number;
+  tax?: number;
+  total?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  project?: {
+    id: number;
+    name: string;
+    city?: string | null;
+    state?: string | null;
+  };
+}
+
 export async function listAssemblies() {
   return api("/api/assemblies");
 }
@@ -247,6 +266,7 @@ export async function listTemplates() {
 
 export async function createEstimate(payload: {
   projectId: number;
+  title?: string;
   location?: Record<string, unknown>;
   lines: Array<{ assemblyId: string; inputs: Record<string, number> }>;
 }) {
@@ -259,6 +279,33 @@ export async function getEstimate(estimateId: string) {
 
 export async function listEstimates(projectId: number) {
   return api(`/api/projects/${projectId}/estimates`);
+}
+
+/** List ALL estimates for the authenticated user across all projects */
+export async function listAllEstimates(): Promise<{ estimates: EstimateSummary[] }> {
+  return api("/api/estimates");
+}
+
+/** Update the status of an estimate */
+export async function updateEstimateStatus(
+  estimateId: string,
+  status: EstimateStatus
+): Promise<{ estimate: EstimateSummary }> {
+  return api(`/api/estimates/${encodeURIComponent(estimateId)}/status`, {
+    method: "PATCH",
+    body: { status },
+  });
+}
+
+/** Update the title of an estimate */
+export async function updateEstimateTitle(
+  estimateId: string,
+  title: string
+): Promise<{ estimate: EstimateSummary }> {
+  return api(`/api/estimates/${encodeURIComponent(estimateId)}/title`, {
+    method: "PATCH",
+    body: { title },
+  });
 }
 
 /* =========================

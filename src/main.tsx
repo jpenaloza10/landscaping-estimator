@@ -19,6 +19,7 @@ import ProjectDetail from "./pages/ProjectDetail";
 
 // Sprint 2 pages
 import EstimateWizard from "./pages/EstimateWizard";
+import EstimatesList  from "./pages/EstimatesList";
 import Assemblies from "./pages/Assemblies";
 import Expenses from "./pages/Expenses";
 import ProposalViewer from "./pages/ProposalViewer";
@@ -61,6 +62,7 @@ const router = createBrowserRouter([
       { path: "/projects/:id",          element: <ProjectDetail /> },
       { path: "/projectwizard",         element: <ProjectWizard /> }, // legacy alias
       { path: "/estimate",              element: <EstimateWizard /> },
+      { path: "/estimates",             element: <EstimatesList /> },
       { path: "/assemblies",            element: <Assemblies /> },
       { path: "/expenses",              element: <Expenses /> },
       { path: "/proposals/:estimateId", element: <ProposalViewer /> },

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Estimate" ADD COLUMN "title" TEXT;
+ALTER TABLE "Estimate" ADD COLUMN "status" TEXT NOT NULL DEFAULT 'DRAFT';

@@ -107,6 +107,8 @@ model Estimate {
   projectId Int            @map("project_id")
   // link to your Project model if you have one:
   project   Project?       @relation(fields: [projectId], references: [id])
+  title     String?        // Optional descriptive name, e.g. "Phase 1 – Patio & Sod"
+  status    String         @default("DRAFT") // DRAFT | SENT | APPROVED | REJECTED
   subtotal  Decimal        @default(0) @db.Decimal(12, 2)
   tax       Decimal        @default(0) @db.Decimal(12, 2)
   total     Decimal        @default(0) @db.Decimal(12, 2)
