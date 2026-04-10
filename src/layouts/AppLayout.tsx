@@ -1,14 +1,39 @@
-import { useState } from "react";
-import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
+const NAV_ITEMS = [
+  { label: "Dashboard", to: "/dashboard" },
+  { label: "Projects",  to: "/projects"  },
+  { label: "Estimator", to: "/estimate"  },
+  { label: "Expenses",  to: "/expenses"  },
+] as const;
+
 export default function AppLayout() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-  const navigate = useNavigate();
+  const [dropOpen,    setDropOpen]    = useState(false);
+  const [mobileOpen,  setMobileOpen]  = useState(false);
+  const [signingOut,  setSigningOut]  = useState(false);
+  const dropRef  = useRef<HTMLDivElement>(null);
+  const navigate  = useNavigate();
+  const location  = useLocation();
   const { user, signOut } = useAuth();
 
-  const displayName = user?.name ?? user?.email ?? "Account";
+  const displayName   = user?.name ?? user?.email ?? "Account";
+  const initials      = displayName.slice(0, 2).toUpperCase();
+
+  // Active page label for the dropdown button
+  const activeItem = NAV_ITEMS.find((n) => location.pathname.startsWith(n.to));
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
+        setDropOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   async function handleSignOut() {
     try {
@@ -20,11 +45,6 @@ export default function AppLayout() {
     }
   }
 
-  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `font-sans text-[11px] font-semibold tracking-[0.18em] uppercase transition-colors ${
-      isActive ? "text-brand-orange" : "text-brand-green hover:text-brand-orange"
-    }`;
-
   return (
     <div
       className="min-h-screen bg-brand-green text-brand-cream antialiased"
@@ -34,12 +54,63 @@ export default function AppLayout() {
       <header className="sticky top-0 z-50 bg-brand-cream border-b border-brand-green/10">
         <div className="mx-auto flex h-[60px] max-w-7xl items-center justify-between px-4 sm:px-8">
 
-          {/* Left nav */}
-          <nav className="hidden lg:flex items-center gap-8" aria-label="Primary left">
-            <NavLink to="/dashboard" className={navLinkClass}>Dashboard</NavLink>
-            <NavLink to="/projects"  className={navLinkClass}>Projects</NavLink>
-            <NavLink to="/estimate"  className={navLinkClass}>Estimator</NavLink>
-          </nav>
+          {/* Left — pages dropdown */}
+          <div ref={dropRef} className="hidden md:block relative">
+            <button
+              onClick={() => setDropOpen((v) => !v)}
+              aria-haspopup="true"
+              aria-expanded={dropOpen}
+              className="flex items-center gap-2 font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange transition-colors"
+            >
+              {/* Hamburger lines become an X when open */}
+              <span className="relative w-4 h-3.5 flex flex-col justify-between">
+                <span className={`block h-px bg-current transition-all origin-center ${dropOpen ? "rotate-45 translate-y-[6px]" : ""}`} />
+                <span className={`block h-px bg-current transition-all ${dropOpen ? "opacity-0" : ""}`} />
+                <span className={`block h-px bg-current transition-all origin-center ${dropOpen ? "-rotate-45 -translate-y-[8px]" : ""}`} />
+              </span>
+              Menu
+              {activeItem && !dropOpen && (
+                <span className="text-brand-orange">— {activeItem.label}</span>
+              )}
+            </button>
+
+            {/* Dropdown panel */}
+            {dropOpen && (
+              <div className="absolute top-full left-0 mt-3 w-52 bg-brand-cream border border-brand-green/12 shadow-xl rounded-sm overflow-hidden">
+                {/* Section label */}
+                <div className="px-4 py-2.5 border-b border-brand-green/10">
+                  <p className="font-sans text-[9px] font-semibold tracking-[0.26em] uppercase text-brand-orange">
+                    Pages
+                  </p>
+                </div>
+
+                {NAV_ITEMS.map(({ label, to }) => {
+                  const isActive = location.pathname.startsWith(to);
+                  return (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      onClick={() => setDropOpen(false)}
+                      className={`flex items-center justify-between px-4 py-3.5 transition-colors group ${
+                        isActive
+                          ? "bg-brand-green/6"
+                          : "hover:bg-brand-green/4"
+                      }`}
+                    >
+                      <span className={`font-sans text-[11px] font-semibold tracking-[0.16em] uppercase transition-colors ${
+                        isActive ? "text-brand-orange" : "text-brand-green group-hover:text-brand-orange"
+                      }`}>
+                        {label}
+                      </span>
+                      {isActive && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-brand-orange" />
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Centre wordmark */}
           <Link
@@ -49,30 +120,30 @@ export default function AppLayout() {
             Landscaping Estimator
           </Link>
 
-          {/* Right nav */}
-          <nav className="hidden lg:flex items-center gap-8" aria-label="Primary right">
-            <NavLink to="/expenses" className={navLinkClass}>Expenses</NavLink>
-
-            <div className="flex items-center gap-4 border-l border-brand-green/15 pl-6">
-              <span
-                className="font-sans text-[10px] tracking-widest uppercase text-brand-green/60 max-w-[140px] truncate"
-                title={displayName}
-              >
-                {displayName}
+          {/* Right — user + sign out */}
+          <div className="hidden md:flex items-center gap-5">
+            {/* Avatar initials */}
+            <div
+              className="w-7 h-7 rounded-full bg-brand-green flex items-center justify-center"
+              title={displayName}
+            >
+              <span className="font-sans text-[10px] font-bold text-brand-cream">
+                {initials}
               </span>
-              <button
-                onClick={handleSignOut}
-                disabled={signingOut}
-                className="font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange transition-colors disabled:opacity-50"
-              >
-                {signingOut ? "Signing out…" : "Sign Out"}
-              </button>
             </div>
-          </nav>
+
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange transition-colors disabled:opacity-50"
+            >
+              {signingOut ? "Signing out…" : "Sign Out"}
+            </button>
+          </div>
 
           {/* Mobile hamburger */}
           <button
-            className="lg:hidden ml-auto text-brand-green p-2"
+            className="md:hidden ml-auto text-brand-green p-2"
             aria-label="Toggle menu"
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((v) => !v)}
@@ -88,16 +159,26 @@ export default function AppLayout() {
           </button>
         </div>
 
-        {/* Mobile drawer */}
+        {/* Mobile full-screen drawer */}
         {mobileOpen && (
-          <div className="lg:hidden border-t border-brand-green/10 bg-brand-cream">
-            <nav className="mx-auto max-w-7xl px-4 py-4 flex flex-col gap-4">
-              <NavLink to="/dashboard" onClick={() => setMobileOpen(false)} className={navLinkClass}>Dashboard</NavLink>
-              <NavLink to="/projects"  onClick={() => setMobileOpen(false)} className={navLinkClass}>Projects</NavLink>
-              <NavLink to="/estimate"  onClick={() => setMobileOpen(false)} className={navLinkClass}>Estimator</NavLink>
-              <NavLink to="/expenses"  onClick={() => setMobileOpen(false)} className={navLinkClass}>Expenses</NavLink>
-              <div className="border-t border-brand-green/10 pt-3 mt-1 space-y-3">
-                <p className="font-sans text-[10px] tracking-widest uppercase text-brand-green/50 truncate">
+          <div className="md:hidden border-t border-brand-green/10 bg-brand-cream">
+            <nav className="mx-auto max-w-7xl px-4 py-4 flex flex-col gap-1">
+              {NAV_ITEMS.map(({ label, to }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={() => setMobileOpen(false)}
+                  className={({ isActive }) =>
+                    `font-sans text-[11px] font-semibold tracking-[0.18em] uppercase py-2.5 border-b border-brand-green/8 last:border-0 transition-colors ${
+                      isActive ? "text-brand-orange" : "text-brand-green hover:text-brand-orange"
+                    }`
+                  }
+                >
+                  {label}
+                </NavLink>
+              ))}
+              <div className="pt-4 mt-2 border-t border-brand-green/10 flex items-center justify-between">
+                <p className="font-sans text-[10px] tracking-widest uppercase text-brand-green/50 truncate max-w-[180px]">
                   {displayName}
                 </p>
                 <button
