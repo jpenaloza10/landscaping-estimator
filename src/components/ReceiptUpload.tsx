@@ -100,22 +100,26 @@ export default function ReceiptUpload({ projectId, onCreated }: ReceiptUploadPro
   }
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm">
-      <h3 className="font-medium mb-2">Upload Receipt</h3>
+    <div className="brand-card">
+      <p className="brand-eyebrow mb-3">Upload Receipt</p>
       <input
         type="file"
         accept="image/*,application/pdf"
         onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        className="text-sm"
+        className="block w-full font-sans text-sm text-brand-cream file:mr-3 file:py-1.5 file:px-3 file:rounded-sm file:border file:border-brand-cream/30 file:bg-transparent file:text-brand-cream file:text-[11px] file:font-semibold file:tracking-widest file:uppercase file:cursor-pointer hover:file:border-brand-cream/60 transition-colors"
       />
       <button
         onClick={handleUpload}
         disabled={!file || loading}
-        className="mt-2 rounded bg-slate-900 text-white px-3 py-2 text-sm disabled:opacity-50"
+        className="btn-brand-primary mt-4 disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        {loading ? "Processing..." : "Upload & Auto-Create Expense"}
+        {loading ? "Processing…" : "Upload & Auto-Create Expense"}
       </button>
-      {msg && <p className="mt-2 text-xs text-slate-600">{msg}</p>}
+      {msg && (
+        <p className="mt-3 font-sans text-xs text-brand-cream-dim border border-brand-cream/15 bg-brand-cream/5 px-3 py-2 rounded-sm">
+          {msg}
+        </p>
+      )}
     </div>
   );
 }
