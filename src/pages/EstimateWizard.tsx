@@ -8,6 +8,7 @@ import {
 } from "../lib/api";
 import DownloadPdfButton from "../components/DownloadPdfButton";
 import AiAssistantPanel from "../components/AiAssistantPanel";
+import { useTranslation } from "../i18n/LanguageContext";
 
 export type Project = { id: number; name: string };
 
@@ -36,18 +37,6 @@ export type Estimate = {
   lines?: EstimateLine[];
 };
 
-// ── 8-Phase guided mode ──────────────────────────────────────────────────────
-const PHASES = [
-  { id: 1, name: "Demo / Site Prep",  hint: "Demolition, debris removal, grading"  },
-  { id: 2, name: "Soil Preparation",  hint: "Soil amendment, tilling, topsoil"      },
-  { id: 3, name: "Irrigation",        hint: "Drip lines, sprinkler systems"          },
-  { id: 4, name: "Hardscape",         hint: "Patios, walkways, retaining walls"      },
-  { id: 5, name: "Planting / Sod",    hint: "Plants, trees, sod, ground cover"       },
-  { id: 6, name: "Mulch",             hint: "Bark, rock, decorative mulch"           },
-  { id: 7, name: "Lighting",          hint: "Landscape and pathway lighting"         },
-  { id: 8, name: "Cleanup",           hint: "Final clean, haul-away, punch list"     },
-] as const;
-
 type PhaseEntry = {
   phaseId: number;
   assemblyId: string;
@@ -59,6 +48,20 @@ const labelClass = "block font-sans text-[10px] font-semibold tracking-[0.18em] 
 const selectClass = "w-full bg-transparent border border-brand-cream/30 rounded-sm px-3 py-2 text-brand-cream text-sm font-sans focus:outline-none focus:border-brand-cream/70 transition-colors";
 
 export default function EstimateWizard() {
+  const { t } = useTranslation();
+
+  // ── 8-Phase guided mode ──────────────────────────────────────────────────────
+  const PHASES = [
+    { id: 1, name: t("estimateWizard.phases.demo"),       hint: t("estimateWizard.phases.demoHint")       },
+    { id: 2, name: t("estimateWizard.phases.soil"),       hint: t("estimateWizard.phases.soilHint")       },
+    { id: 3, name: t("estimateWizard.phases.irrigation"), hint: t("estimateWizard.phases.irrigationHint") },
+    { id: 4, name: t("estimateWizard.phases.hardscape"),  hint: t("estimateWizard.phases.hardscapeHint")  },
+    { id: 5, name: t("estimateWizard.phases.planting"),   hint: t("estimateWizard.phases.plantingHint")   },
+    { id: 6, name: t("estimateWizard.phases.mulch"),      hint: t("estimateWizard.phases.mulchHint")      },
+    { id: 7, name: t("estimateWizard.phases.lighting"),   hint: t("estimateWizard.phases.lightingHint")   },
+    { id: 8, name: t("estimateWizard.phases.cleanup"),    hint: t("estimateWizard.phases.cleanupHint")    },
+  ];
+
   const [assemblies, setAssemblies]     = useState<Assembly[]>([]);
   const [projects,   setProjects]       = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
@@ -189,8 +192,8 @@ export default function EstimateWizard() {
   return (
     <div className="space-y-6">
       <div className="brand-card">
-        <p className="brand-eyebrow mb-1">Build Your</p>
-        <h2 className="font-serif text-3xl font-black italic text-brand-cream mb-6">Estimate</h2>
+        <p className="brand-eyebrow mb-1">{t("estimateWizard.eyebrow")}</p>
+        <h2 className="font-serif text-3xl font-black italic text-brand-cream mb-6">{t("estimateWizard.title")}</h2>
 
         {/* Mode toggle */}
         <div className="flex gap-2 mb-6 border border-brand-cream/15 p-1 w-fit">
@@ -204,27 +207,27 @@ export default function EstimateWizard() {
                   : "text-brand-cream-dim hover:text-brand-cream"
               }`}
             >
-              {m === "quick" ? "Quick Mode" : "Guided (8 Phases)"}
+              {m === "quick" ? t("estimateWizard.quickMode") : t("estimateWizard.guidedMode")}
             </button>
           ))}
         </div>
 
         {/* ── Shared fields: Project + Location ── */}
         <div className="mb-5">
-          <label className={labelClass}>Project</label>
+          <label className={labelClass}>{t("common.project")}</label>
           <select
             className={selectClass}
             value={activeProjectId ?? ""}
             onChange={(e) => setActiveProjectId(e.target.value ? Number(e.target.value) : null)}
           >
-            {projects.length === 0 && <option value="">No projects</option>}
+            {projects.length === 0 && <option value="">{t("estimateWizard.noProjects")}</option>}
             {projects.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
           {projects.length === 0 && (
             <p className="font-sans text-[11px] text-brand-orange mt-2">
-              No projects yet — <Link to="/projects/new" className="underline underline-offset-2">create one first</Link>.
+              {t("estimateWizard.noProjectsNote")} <Link to="/projects/new" className="underline underline-offset-2">{t("estimateWizard.createOneFirst")}</Link>.
             </p>
           )}
         </div>
@@ -233,13 +236,13 @@ export default function EstimateWizard() {
         {mode === "quick" && (
           <>
             <div className="mb-5">
-              <label className={labelClass}>Estimate Title <span className="normal-case font-normal opacity-50">(optional)</span></label>
-              <input className="brand-input" placeholder="e.g. Phase 1 – Backyard Patio" value={quickTitle} onChange={(e) => setQuickTitle(e.target.value)} maxLength={120} />
+              <label className={labelClass}>{t("estimateWizard.estimateTitleLabel")} <span className="normal-case font-normal opacity-50">{t("estimateWizard.optional")}</span></label>
+              <input className="brand-input" placeholder={t("estimateWizard.titlePlaceholder")} value={quickTitle} onChange={(e) => setQuickTitle(e.target.value)} maxLength={120} />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>Assembly</label>
+                <label className={labelClass}>{t("estimateWizard.assembly")}</label>
                 <select className={selectClass} value={assemblyId} onChange={(e) => setAssemblyId(e.target.value)}>
                   {assemblies.map((a) => (
                     <option key={a.id} value={String(a.id)}>{a.name}</option>
@@ -254,21 +257,21 @@ export default function EstimateWizard() {
                 )}
               </div>
               <div>
-                <label className={labelClass}>Area (sqft)</label>
-                <input className="brand-input" type="number" min={1} placeholder="e.g. 300" value={area === 0 ? "" : area} onChange={(e) => setArea(Math.max(0, Number(e.target.value)))} />
+                <label className={labelClass}>{t("estimateWizard.area")}</label>
+                <input className="brand-input" type="number" min={1} placeholder={t("estimateWizard.areaPlaceholder")} value={area === 0 ? "" : area} onChange={(e) => setArea(Math.max(0, Number(e.target.value)))} />
               </div>
               <div>
-                <label className={labelClass}>State</label>
-                <input className="brand-input" value={state} onChange={(e) => setState(e.target.value.toUpperCase())} placeholder="e.g. CA" maxLength={2} />
+                <label className={labelClass}>{t("estimateWizard.state")}</label>
+                <input className="brand-input" value={state} onChange={(e) => setState(e.target.value.toUpperCase())} placeholder={t("estimateWizard.statePlaceholder")} maxLength={2} />
               </div>
               <div>
-                <label className={labelClass}>ZIP Code</label>
-                <input className="brand-input" value={zip} onChange={(e) => setZip(e.target.value)} placeholder="e.g. 94103" maxLength={10} />
+                <label className={labelClass}>{t("estimateWizard.zip")}</label>
+                <input className="brand-input" value={zip} onChange={(e) => setZip(e.target.value)} placeholder={t("estimateWizard.zipPlaceholder")} maxLength={10} />
               </div>
             </div>
 
             <button onClick={handleCreate} disabled={!canCreate} className="btn-brand-primary mt-6 disabled:opacity-40 disabled:cursor-not-allowed">
-              {loading ? "Creating…" : "Create Estimate"}
+              {loading ? t("estimateWizard.creating") : t("estimateWizard.createEstimate")}
             </button>
           </>
         )}
@@ -278,17 +281,17 @@ export default function EstimateWizard() {
           <>
             {/* Header info */}
             <div className="mb-5">
-              <label className={labelClass}>Estimate Title <span className="normal-case font-normal opacity-50">(optional)</span></label>
-              <input className="brand-input" placeholder="e.g. Full Backyard Renovation" value={guidedTitle} onChange={(e) => setGuidedTitle(e.target.value)} maxLength={120} />
+              <label className={labelClass}>{t("estimateWizard.estimateTitleLabel")} <span className="normal-case font-normal opacity-50">{t("estimateWizard.optional")}</span></label>
+              <input className="brand-input" placeholder={t("estimateWizard.guidedTitlePlaceholder")} value={guidedTitle} onChange={(e) => setGuidedTitle(e.target.value)} maxLength={120} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2 mb-6">
               <div>
-                <label className={labelClass}>State</label>
-                <input className="brand-input" value={guidedState} onChange={(e) => setGuidedState(e.target.value.toUpperCase())} placeholder="e.g. CA" maxLength={2} />
+                <label className={labelClass}>{t("estimateWizard.state")}</label>
+                <input className="brand-input" value={guidedState} onChange={(e) => setGuidedState(e.target.value.toUpperCase())} placeholder={t("estimateWizard.statePlaceholder")} maxLength={2} />
               </div>
               <div>
-                <label className={labelClass}>ZIP Code</label>
-                <input className="brand-input" value={guidedZip} onChange={(e) => setGuidedZip(e.target.value)} placeholder="e.g. 94103" maxLength={10} />
+                <label className={labelClass}>{t("estimateWizard.zip")}</label>
+                <input className="brand-input" value={guidedZip} onChange={(e) => setGuidedZip(e.target.value)} placeholder={t("estimateWizard.zipPlaceholder")} maxLength={10} />
               </div>
             </div>
 
@@ -326,7 +329,7 @@ export default function EstimateWizard() {
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div>
                         <p className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-orange mb-0.5">
-                          Phase {ph.id} of {PHASES.length}
+                          {t("estimateWizard.phase", { num: String(ph.id), total: String(PHASES.length) })}
                         </p>
                         <p className="font-serif text-lg font-bold italic text-brand-cream">{ph.name}</p>
                         <p className="font-sans text-[11px] text-brand-cream-dim">{ph.hint}</p>
@@ -338,14 +341,14 @@ export default function EstimateWizard() {
                           onChange={(e) => updatePhase(currentPhase, { skipped: e.target.checked })}
                           className="accent-brand-orange w-4 h-4"
                         />
-                        <span className="font-sans text-[10px] tracking-wide text-brand-cream-dim">Skip</span>
+                        <span className="font-sans text-[10px] tracking-wide text-brand-cream-dim">{t("estimateWizard.skip")}</span>
                       </label>
                     </div>
 
                     {!entry.skipped && (
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div>
-                          <label className={labelClass}>Assembly</label>
+                          <label className={labelClass}>{t("estimateWizard.assembly")}</label>
                           <select
                             className={selectClass}
                             value={entry.assemblyId}
@@ -357,12 +360,12 @@ export default function EstimateWizard() {
                           </select>
                         </div>
                         <div>
-                          <label className={labelClass}>Area (sqft)</label>
+                          <label className={labelClass}>{t("estimateWizard.area")}</label>
                           <input
                             className="brand-input"
                             type="number"
                             min={1}
-                            placeholder="e.g. 200"
+                            placeholder={t("estimateWizard.areaPlaceholder")}
                             value={entry.area === 0 ? "" : entry.area}
                             onChange={(e) => updatePhase(currentPhase, { area: Math.max(0, Number(e.target.value)) })}
                           />
@@ -380,7 +383,7 @@ export default function EstimateWizard() {
                   disabled={currentPhase === 0}
                   className="btn-brand-outline disabled:opacity-30"
                 >
-                  ← Back
+                  {t("common.back")}
                 </button>
                 {isLastPhase ? (
                   <button
@@ -388,11 +391,11 @@ export default function EstimateWizard() {
                     disabled={!guidedCanFinish}
                     className="btn-brand-primary disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    {loading ? "Creating…" : "Create Full Estimate"}
+                    {loading ? t("estimateWizard.creating") : t("estimateWizard.createFullEstimate")}
                   </button>
                 ) : (
                   <button onClick={() => setCurrentPhase((p) => p + 1)} className="btn-brand-primary">
-                    Next Phase →
+                    {t("estimateWizard.nextPhase")}
                   </button>
                 )}
               </div>
@@ -401,7 +404,7 @@ export default function EstimateWizard() {
             {/* Summary of configured phases */}
             {phaseEntries.some((p) => !p.skipped && p.area > 0) && (
               <div className="mt-2 border border-brand-cream/10 p-3">
-                <p className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-3">Phases Configured</p>
+                <p className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-3">{t("estimateWizard.phasesConfigured")}</p>
                 <ul className="space-y-1.5">
                   {phaseEntries.map((entry, i) => {
                     if (entry.skipped) return null;
@@ -435,16 +438,16 @@ export default function EstimateWizard() {
           </div>
 
           <div>
-            <p className="brand-eyebrow mb-3">Result</p>
+            <p className="brand-eyebrow mb-3">{t("estimateWizard.resultEyebrow")}</p>
             <div className="grid grid-cols-3 gap-3 text-center">
               {[
-                { label: "Subtotal", value: estimate.subtotal ?? 0 },
-                { label: "Tax",      value: estimate.tax      ?? 0 },
-                { label: "Total",    value: estimate.total    ?? 0 },
-              ].map(({ label, value }) => (
-                <div key={label} className="border border-brand-cream/15 p-3">
+                { label: t("estimateWizard.subtotal"), value: estimate.subtotal ?? 0, key: "subtotal" },
+                { label: t("estimateWizard.tax"),      value: estimate.tax      ?? 0, key: "tax"      },
+                { label: t("estimateWizard.total"),    value: estimate.total    ?? 0, key: "total"    },
+              ].map(({ label, value, key }) => (
+                <div key={key} className="border border-brand-cream/15 p-3">
                   <p className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">{label}</p>
-                  <p className={`font-serif font-black italic ${label === "Total" ? "text-xl text-brand-orange-light" : "text-base text-brand-cream"}`}>
+                  <p className={`font-serif font-black italic ${key === "total" ? "text-xl text-brand-orange-light" : "text-base text-brand-cream"}`}>
                     ${Number(value).toFixed(2)}
                   </p>
                 </div>
@@ -454,7 +457,7 @@ export default function EstimateWizard() {
 
           {!!estimate.lines?.length && (
             <div>
-              <p className="brand-eyebrow mb-3">Line Items</p>
+              <p className="brand-eyebrow mb-3">{t("estimateWizard.lineItems")}</p>
               <ul className="divide-y divide-brand-cream/10">
                 {estimate.lines.map((line) => (
                   <li key={String(line.id ?? line.assemblyId)} className="py-3 first:pt-0">
@@ -487,14 +490,14 @@ export default function EstimateWizard() {
               target="_blank"
               rel="noreferrer"
             >
-              Open PDF ↗
+              {t("estimateWizard.openPdf")}
             </a>
             <DownloadPdfButton estimateId={String(estimate.id)} />
             <Link
               to={`/proposals/${estimate.id}`}
               className="font-sans text-[11px] font-semibold tracking-widest uppercase text-brand-cream-dim underline underline-offset-2 hover:text-brand-orange transition-colors"
             >
-              View Proposal
+              {t("estimateWizard.viewProposal")}
             </Link>
           </div>
         </div>

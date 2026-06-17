@@ -11,6 +11,7 @@ import Home from "./pages/Home";
 import Account from "./pages/Account";
 
 import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { LanguageProvider } from "./i18n/LanguageContext";
 import { RequireAuth } from "./auth/RequireAuth";
 
 import AppLayout from "./layouts/AppLayout";
@@ -75,8 +76,10 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </LanguageProvider>
   </React.StrictMode>
 );

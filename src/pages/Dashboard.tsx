@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useTranslation } from "../i18n/LanguageContext";
 import {
   getProjects,
   type Project,
@@ -10,6 +11,7 @@ import {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [projectsErr, setProjectsErr] = useState<string | null>(null);
@@ -53,16 +55,16 @@ export default function Dashboard() {
   const WelcomeCard = (
     <div className="brand-card flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6">
       <div>
-        <p className="brand-eyebrow mb-1">Dashboard</p>
+        <p className="brand-eyebrow mb-1">{t("dashboard.eyebrow")}</p>
         <h1 className="font-serif text-3xl font-black italic text-brand-cream">
-          Welcome, {displayName}
+          {t("dashboard.welcome", { name: displayName })}
         </h1>
         <p className="font-sans text-xs text-brand-cream-dim mt-1 tracking-wide">
-          Your snapshot of projects and budgets at a glance.
+          {t("dashboard.subtitle")}
         </p>
       </div>
       <Link to="/projects/new" className="btn-brand-primary shrink-0 mt-3 sm:mt-0">
-        + New Project
+        {t("dashboard.newProject")}
       </Link>
     </div>
   );
@@ -70,14 +72,14 @@ export default function Dashboard() {
   // 2) Quick actions
   const QuickActionsCard = (
     <div className="brand-card">
-      <p className="brand-eyebrow mb-3">Quick Actions</p>
+      <p className="brand-eyebrow mb-3">{t("dashboard.quickActions")}</p>
       <div className="flex flex-col gap-2">
         {[
-          { to: "/projects/new", label: "Create Project" },
-          { to: "/projects",     label: "View All Projects" },
-          { to: "/estimate",     label: "New Estimate"     },
-          { to: "/estimates",    label: "All Estimates"    },
-          { to: "/expenses",     label: "Expense Tracker"  },
+          { to: "/projects/new", label: t("dashboard.createProject") },
+          { to: "/projects",     label: t("dashboard.viewAllProjects") },
+          { to: "/estimate",     label: t("dashboard.newEstimate") },
+          { to: "/estimates",    label: t("dashboard.allEstimates") },
+          { to: "/expenses",     label: t("dashboard.expenseTracker") },
         ].map(({ to, label }) => (
           <Link
             key={to}
@@ -97,20 +99,20 @@ export default function Dashboard() {
   const RecentProjectsCard = (
     <div className="brand-card">
       <div className="flex items-center justify-between mb-4">
-        <p className="brand-eyebrow">Recent Projects</p>
+        <p className="brand-eyebrow">{t("dashboard.recentProjects")}</p>
         <Link to="/projects" className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors">
-          View all →
+          {t("dashboard.viewAll")}
         </Link>
       </div>
 
       {loadingProjects && (
-        <p className="font-sans text-xs text-brand-cream-dim animate-pulse">Loading projects…</p>
+        <p className="font-sans text-xs text-brand-cream-dim animate-pulse">{t("dashboard.loading")}</p>
       )}
       {projectsErr && (
         <p className="font-sans text-xs text-brand-orange">{projectsErr}</p>
       )}
       {!loadingProjects && !projectsErr && projects.length === 0 && (
-        <p className="font-sans text-xs text-brand-cream-dim">No projects yet — create your first one.</p>
+        <p className="font-sans text-xs text-brand-cream-dim">{t("dashboard.noProjects")}</p>
       )}
       {!loadingProjects && !projectsErr && projects.length > 0 && (
         <ul className="divide-y divide-brand-cream/10">
@@ -142,16 +144,16 @@ export default function Dashboard() {
   // 4) Budget snapshot
   const BudgetSnapshotCard = (
     <div className="brand-card">
-      <p className="brand-eyebrow mb-4">Budget Snapshot</p>
+      <p className="brand-eyebrow mb-4">{t("dashboard.budgetSnapshot")}</p>
 
       {loadingSummary && (
-        <p className="font-sans text-xs text-brand-cream-dim animate-pulse">Loading…</p>
+        <p className="font-sans text-xs text-brand-cream-dim animate-pulse">{t("dashboard.loadingBudget")}</p>
       )}
       {!loadingSummary && summaryErr && (
         <p className="font-sans text-xs text-brand-orange">{summaryErr}</p>
       )}
       {!loadingSummary && !summaryErr && summary == null && (
-        <p className="font-sans text-xs text-brand-cream-dim">No financial data yet.</p>
+        <p className="font-sans text-xs text-brand-cream-dim">{t("dashboard.noFinancialData")}</p>
       )}
       {!loadingSummary && !summaryErr && summary && (() => {
         const profitMargin = estimated > 0 ? (summary.grossProfit / estimated) * 100 : 0;
@@ -165,9 +167,9 @@ export default function Dashboard() {
           <>
             <div className="grid grid-cols-3 gap-3 text-center mb-3">
               {[
-                { label: "Contract",  value: estimated },
-                { label: "Expenses",  value: actual },
-                { label: "Remaining", value: remaining, colored: true },
+                { label: t("dashboard.contract"),  value: estimated },
+                { label: t("dashboard.expenses"),  value: actual },
+                { label: t("dashboard.remaining"), value: remaining, colored: true },
               ].map(({ label, value, colored }) => (
                 <div key={label} className="border border-brand-cream/15 p-3">
                   <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">{label}</div>
@@ -179,13 +181,13 @@ export default function Dashboard() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="border border-brand-cream/15 p-3 text-center">
-                <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">Gross Profit</div>
+                <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">{t("dashboard.grossProfit")}</div>
                 <div className={`font-serif text-xl font-black italic ${summary.grossProfit < 0 ? "text-brand-orange" : "text-brand-orange-light"}`}>
                   ${summary.grossProfit.toFixed(0)}
                 </div>
               </div>
               <div className="border border-brand-cream/15 p-3 text-center">
-                <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">Margin</div>
+                <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">{t("dashboard.margin")}</div>
                 <div className={`font-serif text-xl font-black italic ${marginColor}`}>
                   {profitMargin.toFixed(1)}%
                 </div>

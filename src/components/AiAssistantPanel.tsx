@@ -68,7 +68,7 @@ export default function AiAssistantPanel({ estimateId }: Props) {
         <div>
           <p className="brand-eyebrow mb-0.5">AI Assistant</p>
           <p className="font-sans text-[11px] text-brand-cream-dim">
-            Powered by Claude — analyse, validate, and generate proposal text.
+            Powered by Claude — analyze, validate, and generate proposal text.
           </p>
         </div>
         {loading && (

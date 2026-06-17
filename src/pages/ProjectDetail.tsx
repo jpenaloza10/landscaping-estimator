@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "../i18n/LanguageContext";
 import {
   authedFetch,
   updateEstimateStatus,
@@ -47,6 +48,7 @@ const CO_STATUS_BADGE: Record<string, string> = {
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [project,   setProject]   = useState<Project | null>(null);
   const [estimates, setEstimates] = useState<Estimate[]>([]);
@@ -90,15 +92,15 @@ export default function ProjectDetail() {
       } catch (e: unknown) {
         if ((e as { name?: string })?.name === "AbortError") return;
         if (e instanceof ApiError && e.status === 401) { navigate("/login", { replace: true }); return; }
-        if (e instanceof ApiError && e.status === 404)  { setErr("Project not found."); return; }
-        setErr(e instanceof Error ? e.message : "Failed to load project");
+        if (e instanceof ApiError && e.status === 404)  { setErr(t("projectDetail.notFound")); return; }
+        setErr(e instanceof Error ? e.message : t("projectDetail.loadFailed"));
       } finally {
         setLoading(false);
       }
     })();
 
     return () => ac.abort();
-  }, [id, navigate]);
+  }, [id, navigate, t]);
 
   async function handleEstimateStatusChange(estimateId: string, status: EstimateStatus) {
     setUpdatingEstId(estimateId);
@@ -167,7 +169,7 @@ export default function ProjectDetail() {
   if (err) {
     return (
       <div className="brand-card border-brand-orange/40">
-        <p className="brand-eyebrow mb-1">Error</p>
+        <p className="brand-eyebrow mb-1">{t("common.error")}</p>
         <p className="font-sans text-sm text-brand-cream-dim mt-1">{err}</p>
         <Link to="/projects" className="font-sans text-xs text-brand-cream-dim underline underline-offset-2 mt-3 inline-block hover:text-brand-orange">
           ← Back to projects
@@ -185,17 +187,17 @@ export default function ProjectDetail() {
       {/* ── Header ── */}
       <div>
         <Link to="/projects" className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors">
-          ← Projects
+          {t("projectDetail.backToProjects")}
         </Link>
         <div className="flex items-start justify-between gap-4 mt-3">
           <div>
-            <p className="brand-eyebrow mb-1">Project</p>
+            <p className="brand-eyebrow mb-1">{t("projectDetail.eyebrow")}</p>
             <h1 className="font-serif text-4xl font-black italic text-brand-cream">{project.name}</h1>
             {project.location && <p className="font-sans text-sm text-brand-cream-dim mt-1">{project.location}</p>}
             {project.description && <p className="font-sans text-xs text-brand-cream-dim/70 mt-2 leading-relaxed max-w-lg">{project.description}</p>}
           </div>
           <Link to={`/estimate?projectId=${project.id}`} className="btn-brand-primary shrink-0">
-            + New Estimate
+            {t("projectDetail.newEstimate")}
           </Link>
         </div>
       </div>
@@ -204,9 +206,9 @@ export default function ProjectDetail() {
       {(estimates.length > 0 || cos.length > 0) && (
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Estimates Total",    value: estimatesTotal  },
-            { label: "Approved COs",       value: approvedCoTotal },
-            { label: "Contract Value",     value: contractValue   },
+            { label: t("projectDetail.estimatesTotal"),  value: estimatesTotal  },
+            { label: t("projectDetail.approvedCOs"),     value: approvedCoTotal },
+            { label: t("projectDetail.contractValue"),   value: contractValue   },
           ].map(({ label, value }) => (
             <div key={label} className="brand-card py-3 text-center">
               <p className="font-sans text-[9px] tracking-[0.2em] uppercase text-brand-cream-dim mb-1">{label}</p>
@@ -220,10 +222,10 @@ export default function ProjectDetail() {
 
       {/* ── Estimates ── */}
       <div className="brand-card">
-        <p className="brand-eyebrow mb-4">Estimates</p>
+        <p className="brand-eyebrow mb-4">{t("projectDetail.estimatesSection")}</p>
 
         {estimates.length === 0 ? (
-          <p className="font-sans text-xs text-brand-cream-dim">No estimates yet. Create one to get started.</p>
+          <p className="font-sans text-xs text-brand-cream-dim">{t("projectDetail.noEstimates")}</p>
         ) : (
           <ul className="divide-y divide-brand-cream/10">
             {estimates.map((est) => {
@@ -274,43 +276,43 @@ export default function ProjectDetail() {
       {/* ── Change Orders ── */}
       <div className="brand-card">
         <div className="flex items-center justify-between mb-4">
-          <p className="brand-eyebrow">Change Orders</p>
+          <p className="brand-eyebrow">{t("projectDetail.changeOrdersSection")}</p>
           <button
             onClick={() => setShowCoForm((v) => !v)}
             className="font-sans text-[10px] font-semibold tracking-widest uppercase border border-brand-cream/20 px-3 py-1.5 text-brand-cream-dim hover:border-brand-orange hover:text-brand-orange transition-colors"
           >
-            {showCoForm ? "Cancel" : "+ Add Change Order"}
+            {showCoForm ? t("projectDetail.cancelAdd") : t("projectDetail.addChangeOrder")}
           </button>
         </div>
 
         {/* Create form */}
         {showCoForm && (
           <form onSubmit={handleCreateCo} className="mb-6 p-4 border border-brand-cream/15 bg-brand-cream/5 space-y-4">
-            <p className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-orange">New Change Order</p>
+            <p className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-orange">{t("projectDetail.newChangeOrderLabel")}</p>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>Title</label>
+                <label className={labelClass}>{t("common.title")}</label>
                 <input className="brand-input" value={coTitle} onChange={(e) => setCoTitle(e.target.value)} placeholder="e.g. Add retaining wall" required />
               </div>
               <div>
-                <label className={labelClass}>Amount ($)</label>
+                <label className={labelClass}>{t("projectDetail.amountLabel")}</label>
                 <input className="brand-input" type="number" step="0.01" value={coAmount} onChange={(e) => setCoAmount(e.target.value)} placeholder="e.g. 2400.00" required />
               </div>
             </div>
             <div>
-              <label className={labelClass}>Description <span className="normal-case font-normal opacity-50">(optional)</span></label>
-              <input className="brand-input" value={coDesc} onChange={(e) => setCoDesc(e.target.value)} placeholder="Scope of work for this change" />
+              <label className={labelClass}>{t("projectDetail.descriptionLabel")} <span className="normal-case font-normal opacity-50">(optional)</span></label>
+              <input className="brand-input" value={coDesc} onChange={(e) => setCoDesc(e.target.value)} placeholder={t("projectDetail.descriptionPlaceholder")} />
             </div>
             {coErr && <p className="font-sans text-xs text-brand-orange">{coErr}</p>}
             <button type="submit" disabled={coSaving} className="btn-brand-primary disabled:opacity-40">
-              {coSaving ? "Saving…" : "Create Change Order"}
+              {coSaving ? t("projectDetail.saving") : t("projectDetail.createChangeOrder")}
             </button>
           </form>
         )}
 
         {/* List */}
         {cos.length === 0 ? (
-          <p className="font-sans text-xs text-brand-cream-dim">No change orders yet.</p>
+          <p className="font-sans text-xs text-brand-cream-dim">{t("projectDetail.noChangeOrders")}</p>
         ) : (
           <ul className="divide-y divide-brand-cream/10">
             {cos.map((co) => {
@@ -350,14 +352,14 @@ export default function ProjectDetail() {
                             onClick={() => handleCoAction(co.id, "approve")}
                             className="font-sans text-[10px] font-semibold tracking-widest uppercase px-2 py-1 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-400/10 transition-colors disabled:opacity-50"
                           >
-                            Approve
+                            {t("common.approve")}
                           </button>
                           <button
                             disabled={isUpdating}
                             onClick={() => handleCoAction(co.id, "reject")}
                             className="font-sans text-[10px] font-semibold tracking-widest uppercase px-2 py-1 border border-brand-orange/40 text-brand-orange-light hover:bg-brand-orange/10 transition-colors disabled:opacity-50"
                           >
-                            Reject
+                            {t("common.reject")}
                           </button>
                           {isUpdating && <span className="font-sans text-[10px] text-brand-cream-dim animate-pulse">…</span>}
                         </div>

@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api } from "../lib/api";
+import { useTranslation } from "../i18n/LanguageContext";
 
 export default function Account() {
+  const { t } = useTranslation();
   const { user, setAuth, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -24,9 +26,9 @@ export default function Account() {
       );
       // Refresh stored user with new name
       setAuth(localStorage.getItem("authToken"), updated.user);
-      setNameMsg({ text: "Name updated.", ok: true });
+      setNameMsg({ text: t("account.nameUpdated"), ok: true });
     } catch (e: unknown) {
-      setNameMsg({ text: e instanceof Error ? e.message : "Update failed", ok: false });
+      setNameMsg({ text: e instanceof Error ? e.message : t("account.updateFailed"), ok: false });
     } finally {
       setNameBusy(false);
     }
@@ -42,11 +44,11 @@ export default function Account() {
   async function handleChangePw(e: React.FormEvent) {
     e.preventDefault();
     if (newPw !== confirmPw) {
-      setPwMsg({ text: "New passwords do not match.", ok: false });
+      setPwMsg({ text: t("account.passwordsNoMatch"), ok: false });
       return;
     }
     if (newPw.length < 8) {
-      setPwMsg({ text: "New password must be at least 8 characters.", ok: false });
+      setPwMsg({ text: t("account.passwordTooShort"), ok: false });
       return;
     }
     setPwBusy(true);
@@ -57,9 +59,9 @@ export default function Account() {
         body: { currentPassword: currentPw, newPassword: newPw },
       });
       setCurrentPw(""); setNewPw(""); setConfirmPw("");
-      setPwMsg({ text: "Password changed successfully.", ok: true });
+      setPwMsg({ text: t("account.passwordChanged"), ok: true });
     } catch (e: unknown) {
-      setPwMsg({ text: e instanceof Error ? e.message : "Password change failed", ok: false });
+      setPwMsg({ text: e instanceof Error ? e.message : t("account.changeFailed"), ok: false });
     } finally {
       setPwBusy(false);
     }
@@ -77,13 +79,13 @@ export default function Account() {
     <div className="max-w-lg space-y-6">
       {/* Header */}
       <div>
-        <p className="brand-eyebrow mb-1">Settings</p>
-        <h1 className="font-serif text-4xl font-black italic text-brand-cream">Account</h1>
+        <p className="brand-eyebrow mb-1">{t("account.eyebrow")}</p>
+        <h1 className="font-serif text-4xl font-black italic text-brand-cream">{t("account.title")}</h1>
       </div>
 
       {/* ── Profile info ── */}
       <div className="brand-card">
-        <p className="brand-eyebrow mb-4">Profile</p>
+        <p className="brand-eyebrow mb-4">{t("account.profileSection")}</p>
 
         {/* Avatar initials */}
         <div className="flex items-center gap-4 mb-6">
@@ -103,7 +105,7 @@ export default function Account() {
         {/* Edit name */}
         <form onSubmit={handleSaveName} className="space-y-4">
           <div>
-            <label className={labelClass}>Display Name</label>
+            <label className={labelClass}>{t("account.displayName")}</label>
             <input
               className="brand-input"
               value={name}
@@ -118,7 +120,7 @@ export default function Account() {
               disabled={nameBusy || !name.trim() || name.trim() === user?.name}
               className="btn-brand-primary disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {nameBusy ? "Saving…" : "Save Name"}
+              {nameBusy ? t("account.saving") : t("account.saveNameBtn")}
             </button>
             {nameMsg && (
               <p className={`font-sans text-xs ${nameMsg.ok ? "text-emerald-400" : "text-brand-orange"}`}>
@@ -131,10 +133,10 @@ export default function Account() {
 
       {/* ── Change password ── */}
       <div className="brand-card">
-        <p className="brand-eyebrow mb-4">Change Password</p>
+        <p className="brand-eyebrow mb-4">{t("account.passwordSection")}</p>
         <form onSubmit={handleChangePw} className="space-y-4">
           <div>
-            <label className={labelClass}>Current Password</label>
+            <label className={labelClass}>{t("account.currentPassword")}</label>
             <input
               type="password"
               className="brand-input"
@@ -145,7 +147,7 @@ export default function Account() {
             />
           </div>
           <div>
-            <label className={labelClass}>New Password</label>
+            <label className={labelClass}>{t("account.newPassword")}</label>
             <input
               type="password"
               className="brand-input"
@@ -156,7 +158,7 @@ export default function Account() {
             />
           </div>
           <div>
-            <label className={labelClass}>Confirm New Password</label>
+            <label className={labelClass}>{t("account.confirmNewPassword")}</label>
             <input
               type="password"
               className="brand-input"
@@ -172,7 +174,7 @@ export default function Account() {
               disabled={pwBusy || !currentPw || !newPw || !confirmPw}
               className="btn-brand-primary disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {pwBusy ? "Changing…" : "Change Password"}
+              {pwBusy ? t("account.changing") : t("account.changePasswordBtn")}
             </button>
             {pwMsg && (
               <p className={`font-sans text-xs ${pwMsg.ok ? "text-emerald-400" : "text-brand-orange"}`}>
@@ -185,12 +187,12 @@ export default function Account() {
 
       {/* ── Session ── */}
       <div className="brand-card">
-        <p className="brand-eyebrow mb-4">Session</p>
+        <p className="brand-eyebrow mb-4">{t("account.sessionSection")}</p>
         <p className="font-sans text-xs text-brand-cream-dim mb-4">
-          Signed in as <span className="text-brand-cream">{user?.email}</span>
+          {t("account.signedInAs")} <span className="text-brand-cream">{user?.email}</span>
         </p>
         <button onClick={handleSignOut} className="btn-brand-outline text-brand-orange border-brand-orange/40 hover:border-brand-orange">
-          Sign Out
+          {t("account.signOut")}
         </button>
       </div>
     </div>

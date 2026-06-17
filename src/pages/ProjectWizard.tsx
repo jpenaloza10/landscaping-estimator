@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import LocationAutocomplete from "../components/LocationAutocomplete";
 import { createProject } from "../lib/api";
+import { useTranslation } from "../i18n/LanguageContext";
 
 const SCOPE_OPTIONS = [
   "Paver Patio",
@@ -13,12 +14,17 @@ const SCOPE_OPTIONS = [
   "Retaining Wall",
 ];
 
-const STEP_LABELS = ["Basics", "Scope", "Location"];
-
 export default function ProjectWizard() {
   const { user } = useAuth();
   const nav = useNavigate();
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
+
+  const STEP_LABELS = [
+    t("projectWizard.step_basics"),
+    t("projectWizard.step_scope"),
+    t("projectWizard.step_location"),
+  ];
 
   const [name,  setName]  = useState("");
   const [notes, setNotes] = useState("");
@@ -38,7 +44,7 @@ export default function ProjectWizard() {
     setErr(null);
     setLoading(true);
     try {
-      if (!user) throw new Error("You must be logged in before creating a project.");
+      if (!user) throw new Error(t("projectWizard.mustBeLoggedIn"));
       const description = `Scope: ${scope.join(", ") || "None"}\nNotes: ${notes || "-"}`;
       await createProject({ name, description, location });
       nav("/projects");
@@ -55,8 +61,8 @@ export default function ProjectWizard() {
 
       {/* Page header */}
       <div className="mb-8">
-        <p className="brand-eyebrow mb-1">New Work</p>
-        <h1 className="font-serif text-4xl font-black italic text-brand-cream">Create Project</h1>
+        <p className="brand-eyebrow mb-1">{t("projectWizard.eyebrow")}</p>
+        <h1 className="font-serif text-4xl font-black italic text-brand-cream">{t("projectWizard.title")}</h1>
       </div>
 
       {/* Stepper */}
@@ -95,7 +101,7 @@ export default function ProjectWizard() {
         <div className="brand-card space-y-5">
           <div>
             <label className="block font-sans text-[10px] font-semibold tracking-[0.18em] uppercase text-brand-cream-dim mb-2">
-              Project Name <span className="text-brand-orange">*</span>
+              {t("projectWizard.projectName")} <span className="text-brand-orange">*</span>
             </label>
             <input
               className="brand-input"
@@ -108,11 +114,11 @@ export default function ProjectWizard() {
 
           <div>
             <label className="block font-sans text-[10px] font-semibold tracking-[0.18em] uppercase text-brand-cream-dim mb-2">
-              Notes (optional)
+              {t("projectWizard.notesOptional")}
             </label>
             <textarea
               className="brand-input min-h-[120px] resize-y"
-              placeholder="Any details about the project…"
+              placeholder={t("projectWizard.notesPlaceholder")}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -124,7 +130,7 @@ export default function ProjectWizard() {
               onClick={() => setStep(2)}
               disabled={!name}
             >
-              Next →
+              {t("projectWizard.next")}
             </button>
           </div>
         </div>
@@ -134,7 +140,7 @@ export default function ProjectWizard() {
       {step === 2 && (
         <div className="brand-card space-y-5">
           <div>
-            <p className="brand-eyebrow mb-3">Select Scope Items</p>
+            <p className="brand-eyebrow mb-3">{t("projectWizard.selectScope")}</p>
             <div className="grid grid-cols-2 gap-2">
               {SCOPE_OPTIONS.map((opt) => {
                 const selected = scope.includes(opt);
@@ -171,13 +177,13 @@ export default function ProjectWizard() {
 
           {scope.length > 0 && (
             <p className="font-sans text-xs text-brand-orange/80">
-              {scope.length} item{scope.length !== 1 ? "s" : ""} selected: {scope.join(", ")}
+              {t("projectWizard.itemsSelected_other", { count: String(scope.length), items: scope.join(", ") })}
             </p>
           )}
 
           <div className="flex justify-between pt-2">
-            <button className="btn-brand-outline" onClick={() => setStep(1)}>← Back</button>
-            <button className="btn-brand-primary" onClick={() => setStep(3)}>Next →</button>
+            <button className="btn-brand-outline" onClick={() => setStep(1)}>{t("projectWizard.back")}</button>
+            <button className="btn-brand-primary" onClick={() => setStep(3)}>{t("projectWizard.next")}</button>
           </div>
         </div>
       )}
@@ -187,11 +193,11 @@ export default function ProjectWizard() {
         <div className="brand-card space-y-5">
           <div>
             <label className="block font-sans text-[10px] font-semibold tracking-[0.18em] uppercase text-brand-cream-dim mb-2">
-              Project Location <span className="text-brand-orange">*</span>
+              {t("projectWizard.projectLocation")} <span className="text-brand-orange">*</span>
             </label>
             <LocationAutocomplete value={location} onChange={setLocation} />
             <p className="font-sans text-xs text-brand-cream-dim/50 mt-1.5">
-              Used to apply regional labour rates to estimates.
+              {t("projectWizard.locationNote")}
             </p>
           </div>
 
@@ -202,13 +208,13 @@ export default function ProjectWizard() {
           )}
 
           <div className="flex justify-between pt-2">
-            <button className="btn-brand-outline" onClick={() => setStep(2)}>← Back</button>
+            <button className="btn-brand-outline" onClick={() => setStep(2)}>{t("projectWizard.back")}</button>
             <button
               disabled={loading || !location || !name}
               className="btn-brand-orange disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={submit}
             >
-              {loading ? "Creating…" : "Create Project"}
+              {loading ? t("projectWizard.creating") : t("projectWizard.createProject")}
             </button>
           </div>
         </div>

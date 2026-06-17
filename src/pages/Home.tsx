@@ -247,7 +247,7 @@ export default function Home() {
       {/* ── SAMPLE SECTIONS ── */}
       <SampleSection
         eyebrow="Projects"
-        heading="Organise every job"
+        heading="Organize every job"
         body="Keep all your active and completed landscaping jobs in one place. Each project holds its own estimates, expenses, and proposal PDFs — no more hunting through folders."
         cta="View sample projects"
         ctaTo="/demo/projects"
@@ -257,7 +257,7 @@ export default function Home() {
       <SampleSection
         eyebrow="Estimates"
         heading="Instant cost breakdowns"
-        body="Pick an assembly, enter square footage and your ZIP code — labour rates and material costs are applied automatically. Download a client-ready PDF with one click."
+        body="Pick an assembly, enter square footage and your ZIP code — labor rates and material costs are applied automatically. Download a client-ready PDF with one click."
         cta="View sample estimates"
         ctaTo="/demo/estimates"
         preview={<EstimatesPreview />}
@@ -419,7 +419,7 @@ function ExpensesPreview() {
   const expenses = [
     { vendor: "SodSource Inc.",      category: "Materials", amount: "$1,320.00", date: "Mar 18" },
     { vendor: "Lowe's",              category: "Materials", amount: "$218.45",   date: "Mar 20" },
-    { vendor: "Manuel's Grading Co", category: "Labour",   amount: "$480.00",   date: "Mar 21" },
+    { vendor: "Manuel's Grading Co", category: "Labor",   amount: "$480.00",   date: "Mar 21" },
   ];
   return (
     <div className="brand-card">
@@ -456,7 +456,7 @@ const FEATURES = [
   },
   {
     title: "Live Pricing",
-    desc:  "Regional labour rates and material costs applied automatically based on your ZIP code.",
+    desc:  "Regional labor rates and material costs applied automatically based on your ZIP code.",
     Icon:  ClockIcon,
   },
   {

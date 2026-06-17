@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useTranslation } from "../i18n/LanguageContext";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function SignUp() {
   const navigate = useNavigate();
   const { signUp } = useAuth();
+  const { t } = useTranslation();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -20,15 +22,15 @@ export default function SignUp() {
 
     // Client-side validation
     if (!name.trim()) {
-      setErr("Please enter your name.");
+      setErr(t("signup.enterName"));
       return;
     }
     if (!EMAIL_RE.test(email)) {
-      setErr("Please enter a valid email address.");
+      setErr(t("signup.enterEmail"));
       return;
     }
     if (password.length < 8) {
-      setErr("Password must be at least 8 characters.");
+      setErr(t("signup.enterPassword"));
       return;
     }
 
@@ -51,9 +53,9 @@ export default function SignUp() {
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <p className="brand-eyebrow text-center mb-2">Get started</p>
+        <p className="brand-eyebrow text-center mb-2">{t("signup.getStarted")}</p>
         <h1 className="font-serif text-4xl font-black italic text-brand-cream text-center mb-8">
-          Create Account
+          {t("signup.createAccount")}
         </h1>
 
         <div className="brand-card">
@@ -66,11 +68,11 @@ export default function SignUp() {
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
               <label className="block font-sans text-[10px] font-semibold tracking-[0.18em] uppercase text-brand-cream-dim mb-2">
-                Name
+                {t("signup.name")}
               </label>
               <input
                 className="brand-input"
-                placeholder="Your full name"
+                placeholder={t("signup.yourFullName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoComplete="name"
@@ -80,7 +82,7 @@ export default function SignUp() {
 
             <div>
               <label className="block font-sans text-[10px] font-semibold tracking-[0.18em] uppercase text-brand-cream-dim mb-2">
-                Email
+                {t("signup.email")}
               </label>
               <input
                 type="email"
@@ -95,12 +97,12 @@ export default function SignUp() {
 
             <div>
               <label className="block font-sans text-[10px] font-semibold tracking-[0.18em] uppercase text-brand-cream-dim mb-2">
-                Password
+                {t("signup.password")}
               </label>
               <input
                 type="password"
                 className="brand-input"
-                placeholder="Min. 8 characters"
+                placeholder={t("signup.minChars")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
@@ -110,14 +112,14 @@ export default function SignUp() {
             </div>
 
             <button disabled={busy} className="btn-brand-primary w-full mt-2">
-              {busy ? "Creating…" : "Create Account"}
+              {busy ? t("signup.busy") : t("signup.createAccount")}
             </button>
           </form>
 
           <p className="font-sans text-xs text-center text-brand-cream-dim pt-4 border-t border-brand-cream/10 mt-4">
-            Already have an account?{" "}
+            {t("signup.alreadyAccount")}{" "}
             <Link className="text-brand-cream underline underline-offset-2 hover:text-brand-orange transition-colors" to="/">
-              Sign in
+              {t("signup.signInLink")}
             </Link>
           </p>
         </div>

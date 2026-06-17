@@ -1,14 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-
-const NAV_ITEMS = [
-  { label: "Dashboard", to: "/dashboard" },
-  { label: "Projects",  to: "/projects"  },
-  { label: "Estimates", to: "/estimates" },
-  { label: "Estimator", to: "/estimate"  },
-  { label: "Expenses",  to: "/expenses"  },
-] as const;
+import { useTranslation } from "../i18n/LanguageContext";
+import LanguageToggle from "../components/LanguageToggle";
 
 export default function AppLayout() {
   const [dropOpen,    setDropOpen]    = useState(false);
@@ -18,6 +12,15 @@ export default function AppLayout() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const { user, signOut } = useAuth();
+  const { t } = useTranslation();
+
+  const NAV_ITEMS = [
+    { label: t("nav.dashboard"), to: "/dashboard" },
+    { label: t("nav.projects"),  to: "/projects"  },
+    { label: t("nav.estimates"), to: "/estimates" },
+    { label: t("nav.estimator"), to: "/estimate"  },
+    { label: t("nav.expenses"),  to: "/expenses"  },
+  ];
 
   const displayName   = user?.name ?? user?.email ?? "Account";
   const initials      = displayName.slice(0, 2).toUpperCase();
@@ -69,7 +72,7 @@ export default function AppLayout() {
                 <span className={`block h-px bg-current transition-all ${dropOpen ? "opacity-0" : ""}`} />
                 <span className={`block h-px bg-current transition-all origin-center ${dropOpen ? "-rotate-45 -translate-y-[8px]" : ""}`} />
               </span>
-              Menu
+              {t("nav.menu")}
               {activeItem && !dropOpen && (
                 <span className="text-brand-orange">— {activeItem.label}</span>
               )}
@@ -81,7 +84,7 @@ export default function AppLayout() {
                 {/* Section label */}
                 <div className="px-4 py-2.5 border-b border-brand-green/10">
                   <p className="font-sans text-[9px] font-semibold tracking-[0.26em] uppercase text-brand-orange">
-                    Pages
+                    {t("nav.pages")}
                   </p>
                 </div>
 
@@ -121,8 +124,10 @@ export default function AppLayout() {
             Landscaping Estimator
           </Link>
 
-          {/* Right — user + sign out */}
+          {/* Right — language toggle + user + sign out */}
           <div className="hidden md:flex items-center gap-5">
+            <LanguageToggle className="text-brand-green hover:text-brand-orange border border-brand-green/20 px-2 py-1 hover:border-brand-orange" />
+
             {/* Avatar initials */}
             <div
               className="w-7 h-7 rounded-full bg-brand-green flex items-center justify-center"
@@ -138,7 +143,7 @@ export default function AppLayout() {
               disabled={signingOut}
               className="font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange transition-colors disabled:opacity-50"
             >
-              {signingOut ? "Signing out…" : "Sign Out"}
+              {signingOut ? t("nav.signingOut") : t("nav.signOut")}
             </button>
           </div>
 
@@ -182,13 +187,16 @@ export default function AppLayout() {
                 <p className="font-sans text-[10px] tracking-widest uppercase text-brand-green/50 truncate max-w-[180px]">
                   {displayName}
                 </p>
-                <button
-                  onClick={() => { setMobileOpen(false); void handleSignOut(); }}
-                  disabled={signingOut}
-                  className="font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange transition-colors disabled:opacity-50"
-                >
-                  {signingOut ? "Signing out…" : "Sign Out"}
-                </button>
+                <div className="flex items-center gap-3">
+                  <LanguageToggle className="text-brand-green hover:text-brand-orange border border-brand-green/20 px-2 py-1" />
+                  <button
+                    onClick={() => { setMobileOpen(false); void handleSignOut(); }}
+                    disabled={signingOut}
+                    className="font-sans text-[11px] font-semibold tracking-[0.18em] uppercase text-brand-green hover:text-brand-orange transition-colors disabled:opacity-50"
+                  >
+                    {signingOut ? t("nav.signingOut") : t("nav.signOut")}
+                  </button>
+                </div>
               </div>
             </nav>
           </div>
@@ -215,7 +223,7 @@ export default function AppLayout() {
           className="font-sans text-[11px] tracking-widest uppercase opacity-50"
           style={{ color: "#D9D1C0" }}
         >
-          © {new Date().getFullYear()} · All rights reserved
+          {t("footer.rights", { year: String(new Date().getFullYear()) })}
         </span>
       </footer>
     </div>

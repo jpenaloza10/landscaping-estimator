@@ -9,14 +9,7 @@ import {
   type EstimateStatus,
 } from "../lib/api";
 import DownloadPdfButton from "../components/DownloadPdfButton";
-
-// ── Status config ──────────────────────────────────────────────────────────────
-const STATUS_OPTIONS: { value: EstimateStatus; label: string }[] = [
-  { value: "DRAFT",    label: "Draft"    },
-  { value: "SENT",     label: "Sent"     },
-  { value: "APPROVED", label: "Approved" },
-  { value: "REJECTED", label: "Rejected" },
-];
+import { useTranslation } from "../i18n/LanguageContext";
 
 const STATUS_STYLE: Record<EstimateStatus, { dot: string; text: string; bg: string }> = {
   DRAFT:    { dot: "bg-brand-cream/40",     text: "text-brand-cream/60",    bg: "bg-brand-cream/5"     },
@@ -25,27 +18,36 @@ const STATUS_STYLE: Record<EstimateStatus, { dot: string; text: string; bg: stri
   REJECTED: { dot: "bg-brand-orange",       text: "text-brand-orange-light", bg: "bg-brand-orange/10"  },
 };
 
-function StatusBadge({ status }: { status: EstimateStatus }) {
+function StatusBadge({ status, label }: { status: EstimateStatus; label: string }) {
   const s = STATUS_STYLE[status] ?? STATUS_STYLE.DRAFT;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-sans font-semibold tracking-[0.14em] uppercase ${s.bg} ${s.text}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-      {STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status}
+      {label}
     </span>
   );
 }
 
-// ── Filter tabs ────────────────────────────────────────────────────────────────
-const FILTERS: { label: string; value: EstimateStatus | "ALL" }[] = [
-  { label: "All",      value: "ALL"      },
-  { label: "Draft",    value: "DRAFT"    },
-  { label: "Sent",     value: "SENT"     },
-  { label: "Approved", value: "APPROVED" },
-  { label: "Rejected", value: "REJECTED" },
-];
-
 export default function EstimatesList() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+
+  // ── Status config ──────────────────────────────────────────────────────────────
+  const STATUS_OPTIONS: { value: EstimateStatus; label: string }[] = [
+    { value: "DRAFT",    label: t("estimatesList.statusDraft")    },
+    { value: "SENT",     label: t("estimatesList.statusSent")     },
+    { value: "APPROVED", label: t("estimatesList.statusApproved") },
+    { value: "REJECTED", label: t("estimatesList.statusRejected") },
+  ];
+
+  // ── Filter tabs ────────────────────────────────────────────────────────────────
+  const FILTERS: { label: string; value: EstimateStatus | "ALL" }[] = [
+    { label: t("estimatesList.filterAll"),      value: "ALL"      },
+    { label: t("estimatesList.filterDraft"),    value: "DRAFT"    },
+    { label: t("estimatesList.filterSent"),     value: "SENT"     },
+    { label: t("estimatesList.filterApproved"), value: "APPROVED" },
+    { label: t("estimatesList.filterRejected"), value: "REJECTED" },
+  ];
   const [estimates, setEstimates] = useState<EstimateSummary[]>([]);
   const [loading, setLoading]     = useState(true);
   const [err, setErr]             = useState<string | null>(null);
@@ -112,8 +114,8 @@ export default function EstimatesList() {
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="brand-eyebrow mb-1">All</p>
-          <h1 className="font-serif text-4xl font-black italic text-brand-cream">Estimates</h1>
+          <p className="brand-eyebrow mb-1">{t("estimatesList.eyebrow")}</p>
+          <h1 className="font-serif text-4xl font-black italic text-brand-cream">{t("estimatesList.title")}</h1>
         </div>
         <Link to="/estimate" className="btn-brand-primary shrink-0">
           + New Estimate
@@ -123,10 +125,10 @@ export default function EstimatesList() {
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Total Estimates", value: estimates.length, isCount: true },
-          { label: "Total Value",     value: totalValue,        isCount: false },
-          { label: "Approved Value",  value: approvedValue,     isCount: false },
-          { label: "Pending",         value: estimates.filter((e) => e.status === "SENT" || e.status === "DRAFT").length, isCount: true },
+          { label: t("estimatesList.totalEstimates"), value: estimates.length, isCount: true },
+          { label: t("estimatesList.totalValue"),     value: totalValue,        isCount: false },
+          { label: t("estimatesList.approvedValue"),  value: approvedValue,     isCount: false },
+          { label: t("estimatesList.pending"),        value: estimates.filter((e) => e.status === "SENT" || e.status === "DRAFT").length, isCount: true },
         ].map(({ label, value, isCount }) => (
           <div key={label} className="brand-card py-4 text-center">
             <p className="font-sans text-[9px] font-semibold tracking-[0.2em] uppercase text-brand-cream-dim mb-1">
@@ -173,7 +175,7 @@ export default function EstimatesList() {
       {/* ── List ── */}
       {displayed.length === 0 ? (
         <div className="brand-card text-center py-12">
-          <p className="font-serif text-2xl italic text-brand-cream/40 mb-2">No estimates yet</p>
+          <p className="font-serif text-2xl italic text-brand-cream/40 mb-2">{t("estimatesList.noEstimates")}</p>
           <p className="font-sans text-xs text-brand-cream-dim mb-6">
             {filter !== "ALL"
               ? `No ${filter.toLowerCase()} estimates found.`
@@ -206,7 +208,7 @@ export default function EstimatesList() {
                   {/* Left: meta */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <StatusBadge status={est.status} />
+                      <StatusBadge status={est.status} label={STATUS_OPTIONS.find((o) => o.value === est.status)?.label ?? est.status} />
                       {dateStr && (
                         <span className="font-sans text-[10px] text-brand-cream-dim tracking-wide">
                           {dateStr}
@@ -284,14 +286,14 @@ export default function EstimatesList() {
                     rel="noreferrer"
                     className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors"
                   >
-                    Open PDF ↗
+                    {t("estimatesList.pdfLink")}
                   </a>
                   <DownloadPdfButton estimateId={est.id} />
                   <Link
                     to={`/proposals/${est.id}`}
                     className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors"
                   >
-                    View Proposal
+                    {t("estimatesList.proposalLink")}
                   </Link>
                   {est.project && (
                     <Link

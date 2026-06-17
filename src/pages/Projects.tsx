@@ -2,14 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { authedFetch, ApiError, Project } from "../lib/api";
+import { useTranslation } from "../i18n/LanguageContext";
 
 type ProjectsResponse =
-  | { projects: Project[] } 
-  | Project[];              
+  | { projects: Project[] }
+  | Project[];
 
 export default function Projects() {
   const navigate = useNavigate();
   const { token, loading } = useAuth();
+  const { t } = useTranslation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -74,10 +76,10 @@ export default function Projects() {
     if (!projects.length) {
       return (
         <div className="brand-card text-center py-12 mt-6">
-          <p className="font-serif text-2xl italic font-bold text-brand-cream mb-2">No projects yet</p>
-          <p className="font-sans text-xs text-brand-cream-dim mb-6 tracking-wide">Create your first project to get started.</p>
+          <p className="font-serif text-2xl italic font-bold text-brand-cream mb-2">{t("projects.noProjectsYet")}</p>
+          <p className="font-sans text-xs text-brand-cream-dim mb-6 tracking-wide">{t("projects.createFirst")}</p>
           <Link to="/projects/new" className="btn-brand-primary">
-            New Project
+            {t("projects.newProject")}
           </Link>
         </div>
       );
@@ -105,23 +107,23 @@ export default function Projects() {
               to={`/projects/${p.id}`}
               className="btn-brand-outline self-start text-[10px] px-4 py-2"
             >
-              Open →
+              {t("projects.openProject")}
             </Link>
           </div>
         ))}
       </div>
     );
-  }, [loading, loadingList, err, projects]);
+  }, [loading, loadingList, err, projects, t]);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <div>
-          <p className="brand-eyebrow mb-1">Your work</p>
-          <h1 className="font-serif text-4xl font-black italic text-brand-cream">Projects</h1>
+          <p className="brand-eyebrow mb-1">{t("projects.eyebrow")}</p>
+          <h1 className="font-serif text-4xl font-black italic text-brand-cream">{t("projects.title")}</h1>
         </div>
         <Link to="/projects/new" className="btn-brand-primary">
-          + New Project
+          {t("projects.newProject")}
         </Link>
       </div>
       {content}
