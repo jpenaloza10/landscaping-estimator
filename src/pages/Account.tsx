@@ -1,31 +1,198 @@
 import { useState } from "react";
-import { supabase } from "../lib/supabase";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
+import { api } from "../lib/api";
 
 export default function Account() {
-  const [email, setEmail] = useState("");
-  const [pw, setPw] = useState("");
-  const [msg, setMsg] = useState("");
+  const { user, setAuth, signOut } = useAuth();
+  const navigate = useNavigate();
 
-  async function handleSignUp() {
-    const { error } = await supabase.auth.signUp({ email, password: pw });
-    setMsg(error ? error.message : "Check your email to confirm.");
+  // ── Display name edit ──────────────────────────────────────────────────────
+  const [name, setName]       = useState(user?.name ?? "");
+  const [nameMsg, setNameMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [nameBusy, setNameBusy] = useState(false);
+
+  async function handleSaveName(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setNameBusy(true);
+    setNameMsg(null);
+    try {
+      const updated = await api<{ user: { id: number; name: string; email: string } }>(
+        "/api/auth/profile",
+        { method: "PATCH", body: { name: name.trim() } }
+      );
+      // Refresh stored user with new name
+      setAuth(localStorage.getItem("authToken"), updated.user);
+      setNameMsg({ text: "Name updated.", ok: true });
+    } catch (e: unknown) {
+      setNameMsg({ text: e instanceof Error ? e.message : "Update failed", ok: false });
+    } finally {
+      setNameBusy(false);
+    }
   }
 
-  async function handleSignIn() {
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
-    setMsg(error ? error.message : "Signed in!");
+  // ── Change password ────────────────────────────────────────────────────────
+  const [currentPw, setCurrentPw]   = useState("");
+  const [newPw, setNewPw]           = useState("");
+  const [confirmPw, setConfirmPw]   = useState("");
+  const [pwMsg, setPwMsg]           = useState<{ text: string; ok: boolean } | null>(null);
+  const [pwBusy, setPwBusy]         = useState(false);
+
+  async function handleChangePw(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPw !== confirmPw) {
+      setPwMsg({ text: "New passwords do not match.", ok: false });
+      return;
+    }
+    if (newPw.length < 8) {
+      setPwMsg({ text: "New password must be at least 8 characters.", ok: false });
+      return;
+    }
+    setPwBusy(true);
+    setPwMsg(null);
+    try {
+      await api("/api/auth/change-password", {
+        method: "POST",
+        body: { currentPassword: currentPw, newPassword: newPw },
+      });
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+      setPwMsg({ text: "Password changed successfully.", ok: true });
+    } catch (e: unknown) {
+      setPwMsg({ text: e instanceof Error ? e.message : "Password change failed", ok: false });
+    } finally {
+      setPwBusy(false);
+    }
   }
+
+  // ── Sign out ───────────────────────────────────────────────────────────────
+  async function handleSignOut() {
+    await signOut();
+    navigate("/", { replace: true });
+  }
+
+  const labelClass = "block font-sans text-[10px] font-semibold tracking-[0.18em] uppercase text-brand-cream-dim mb-2";
 
   return (
-    <div className="max-w-md mx-auto bg-white p-4 rounded-2xl shadow">
-      <h2 className="font-semibold mb-4">Account</h2>
-      <input className="w-full border rounded p-2 mb-2" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)}/>
-      <input className="w-full border rounded p-2 mb-4" placeholder="Password" type="password" value={pw} onChange={e=>setPw(e.target.value)}/>
-      <div className="flex gap-2">
-        <button onClick={handleSignUp} className="rounded bg-slate-900 text-white px-3 py-2">Sign up</button>
-        <button onClick={handleSignIn} className="rounded border px-3 py-2">Sign in</button>
+    <div className="max-w-lg space-y-6">
+      {/* Header */}
+      <div>
+        <p className="brand-eyebrow mb-1">Settings</p>
+        <h1 className="font-serif text-4xl font-black italic text-brand-cream">Account</h1>
       </div>
-      {msg && <p className="mt-3 text-sm text-slate-600">{msg}</p>}
+
+      {/* ── Profile info ── */}
+      <div className="brand-card">
+        <p className="brand-eyebrow mb-4">Profile</p>
+
+        {/* Avatar initials */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-14 h-14 rounded-full bg-brand-orange flex items-center justify-center shrink-0">
+            <span className="font-sans text-xl font-bold text-white">
+              {(user?.name ?? user?.email ?? "?").slice(0, 2).toUpperCase()}
+            </span>
+          </div>
+          <div>
+            <p className="font-serif text-lg font-bold italic text-brand-cream">
+              {user?.name || "—"}
+            </p>
+            <p className="font-sans text-xs text-brand-cream-dim mt-0.5">{user?.email}</p>
+          </div>
+        </div>
+
+        {/* Edit name */}
+        <form onSubmit={handleSaveName} className="space-y-4">
+          <div>
+            <label className={labelClass}>Display Name</label>
+            <input
+              className="brand-input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              maxLength={80}
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={nameBusy || !name.trim() || name.trim() === user?.name}
+              className="btn-brand-primary disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {nameBusy ? "Saving…" : "Save Name"}
+            </button>
+            {nameMsg && (
+              <p className={`font-sans text-xs ${nameMsg.ok ? "text-emerald-400" : "text-brand-orange"}`}>
+                {nameMsg.text}
+              </p>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {/* ── Change password ── */}
+      <div className="brand-card">
+        <p className="brand-eyebrow mb-4">Change Password</p>
+        <form onSubmit={handleChangePw} className="space-y-4">
+          <div>
+            <label className={labelClass}>Current Password</label>
+            <input
+              type="password"
+              className="brand-input"
+              value={currentPw}
+              onChange={(e) => setCurrentPw(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>New Password</label>
+            <input
+              type="password"
+              className="brand-input"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              placeholder="Min 8 characters"
+              autoComplete="new-password"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Confirm New Password</label>
+            <input
+              type="password"
+              className="brand-input"
+              value={confirmPw}
+              onChange={(e) => setConfirmPw(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={pwBusy || !currentPw || !newPw || !confirmPw}
+              className="btn-brand-primary disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {pwBusy ? "Changing…" : "Change Password"}
+            </button>
+            {pwMsg && (
+              <p className={`font-sans text-xs ${pwMsg.ok ? "text-emerald-400" : "text-brand-orange"}`}>
+                {pwMsg.text}
+              </p>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {/* ── Session ── */}
+      <div className="brand-card">
+        <p className="brand-eyebrow mb-4">Session</p>
+        <p className="font-sans text-xs text-brand-cream-dim mb-4">
+          Signed in as <span className="text-brand-cream">{user?.email}</span>
+        </p>
+        <button onClick={handleSignOut} className="btn-brand-outline text-brand-orange border-brand-orange/40 hover:border-brand-orange">
+          Sign Out
+        </button>
+      </div>
     </div>
   );
 }

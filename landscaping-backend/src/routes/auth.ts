@@ -91,6 +91,64 @@ r.post("/login", authRateLimit, async (req: Request, res: Response) => {
   }
 });
 
+/* ── PATCH /api/auth/profile ── */
+
+r.patch("/profile", authMiddleware, async (req: Request, res: Response) => {
+  if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
+  const userId = Number(req.user.id);
+  if (!Number.isFinite(userId)) return res.status(400).json({ error: "Invalid user id" });
+
+  const parsed = z.object({ name: z.string().min(1).max(100) }).safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
+  }
+
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { name: parsed.data.name.trim() },
+      select: { id: true, name: true, email: true },
+    });
+    return res.json({ user });
+  } catch (e: unknown) {
+    console.error("Profile update error:", e);
+    return res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+/* ── POST /api/auth/change-password ── */
+
+r.post("/change-password", authMiddleware, async (req: Request, res: Response) => {
+  if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
+  const userId = Number(req.user.id);
+  if (!Number.isFinite(userId)) return res.status(400).json({ error: "Invalid user id" });
+
+  const schema = z.object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z.string().min(8, "New password must be at least 8 characters"),
+  });
+  const parsed = schema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid data" });
+  }
+
+  try {
+    const userFull = await prisma.user.findUnique({ where: { id: userId } });
+    if (!userFull) return res.status(404).json({ error: "User not found" });
+
+    const ok = await bcrypt.compare(parsed.data.currentPassword, userFull.password_hash);
+    if (!ok) return res.status(401).json({ error: "Current password is incorrect" });
+
+    const hash = await bcrypt.hash(parsed.data.newPassword, 10);
+    await prisma.user.update({ where: { id: userId }, data: { password_hash: hash } });
+
+    return res.json({ ok: true });
+  } catch (e: unknown) {
+    console.error("Change-password error:", e);
+    return res.status(500).json({ error: "Failed to change password" });
+  }
+});
+
 /* ── GET /api/auth/me ── */
 
 r.get("/me", authMiddleware, async (req: Request, res: Response) => {

@@ -75,7 +75,9 @@ export default function Dashboard() {
         {[
           { to: "/projects/new", label: "Create Project" },
           { to: "/projects",     label: "View All Projects" },
-          { to: "/expenses",     label: "Expense Tracker" },
+          { to: "/estimate",     label: "New Estimate"     },
+          { to: "/estimates",    label: "All Estimates"    },
+          { to: "/expenses",     label: "Expense Tracker"  },
         ].map(({ to, label }) => (
           <Link
             key={to}
@@ -151,30 +153,47 @@ export default function Dashboard() {
       {!loadingSummary && !summaryErr && summary == null && (
         <p className="font-sans text-xs text-brand-cream-dim">No financial data yet.</p>
       )}
-      {!loadingSummary && !summaryErr && summary && (
-        <>
-          <div className="grid grid-cols-3 gap-3 text-center mb-3">
-            {[
-              { label: "Contract",  value: estimated },
-              { label: "Expenses",  value: actual },
-              { label: "Remaining", value: remaining, colored: true },
-            ].map(({ label, value, colored }) => (
-              <div key={label} className="border border-brand-cream/15 p-3">
-                <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">{label}</div>
-                <div className={`font-serif text-base font-bold italic ${colored && value < 0 ? "text-brand-orange" : "text-brand-cream"}`}>
-                  ${value.toFixed(0)}
+      {!loadingSummary && !summaryErr && summary && (() => {
+        const profitMargin = estimated > 0 ? (summary.grossProfit / estimated) * 100 : 0;
+        const marginColor = profitMargin >= 20
+          ? "text-emerald-400"
+          : profitMargin >= 10
+          ? "text-brand-orange-light"
+          : "text-brand-orange";
+
+        return (
+          <>
+            <div className="grid grid-cols-3 gap-3 text-center mb-3">
+              {[
+                { label: "Contract",  value: estimated },
+                { label: "Expenses",  value: actual },
+                { label: "Remaining", value: remaining, colored: true },
+              ].map(({ label, value, colored }) => (
+                <div key={label} className="border border-brand-cream/15 p-3">
+                  <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">{label}</div>
+                  <div className={`font-serif text-base font-bold italic ${colored && value < 0 ? "text-brand-orange" : "text-brand-cream"}`}>
+                    ${value.toFixed(0)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="border border-brand-cream/15 p-3 text-center">
+                <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">Gross Profit</div>
+                <div className={`font-serif text-xl font-black italic ${summary.grossProfit < 0 ? "text-brand-orange" : "text-brand-orange-light"}`}>
+                  ${summary.grossProfit.toFixed(0)}
                 </div>
               </div>
-            ))}
-          </div>
-          <div className="border border-brand-cream/15 p-3 text-center">
-            <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">Gross Profit</div>
-            <div className={`font-serif text-xl font-black italic ${summary.grossProfit < 0 ? "text-brand-orange" : "text-brand-orange-light"}`}>
-              ${summary.grossProfit.toFixed(0)}
+              <div className="border border-brand-cream/15 p-3 text-center">
+                <div className="font-sans text-[10px] tracking-widest uppercase text-brand-cream-dim mb-1">Margin</div>
+                <div className={`font-serif text-xl font-black italic ${marginColor}`}>
+                  {profitMargin.toFixed(1)}%
+                </div>
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        );
+      })()}
     </div>
   );
 

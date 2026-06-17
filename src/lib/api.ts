@@ -363,6 +363,46 @@ export async function createExpense(input: ExpenseInput) {
 }
 
 /* =========================
+   Change Orders
+   ========================= */
+export interface ChangeOrder {
+  id: string;
+  projectId: number;
+  estimateId?: string | null;
+  title: string;
+  description?: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  amount: number;
+  createdAt?: string;
+  decidedAt?: string | null;
+}
+
+export async function listChangeOrders(projectId: number): Promise<ChangeOrder[]> {
+  const data = await api<unknown>(`/api/change-orders?projectId=${projectId}`);
+  if (Array.isArray(data)) return data as ChangeOrder[];
+  const wrapped = data as { changeOrders?: ChangeOrder[] };
+  return wrapped.changeOrders ?? [];
+}
+
+export async function createChangeOrder(input: {
+  projectId: number;
+  title: string;
+  description?: string;
+  amount: number;
+  estimateId?: string;
+}): Promise<ChangeOrder> {
+  return api("/api/change-orders", { method: "POST", body: input });
+}
+
+export async function approveChangeOrder(id: string): Promise<ChangeOrder> {
+  return api(`/api/change-orders/${encodeURIComponent(id)}/approve`, { method: "POST" });
+}
+
+export async function rejectChangeOrder(id: string): Promise<ChangeOrder> {
+  return api(`/api/change-orders/${encodeURIComponent(id)}/reject`, { method: "POST" });
+}
+
+/* =========================
    Convenience alias
    ========================= */
 export const authedFetch = api;

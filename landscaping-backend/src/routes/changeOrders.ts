@@ -132,6 +132,37 @@ router.post("/:id/approve", async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/change-orders/:id/reject
+ * Reject a change order if it belongs to a project owned by the current user.
+ */
+router.post("/:id/reject", async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (userId == null) return res.status(401).json({ error: "Unauthorized" });
+
+    const idStr = String(req.params.id);
+    const existing = await prisma.changeOrder.findUnique({
+      where: { id: idStr },
+      include: { project: true },
+    });
+
+    if (!existing || !existing.project || existing.project.user_id !== userId) {
+      return res.status(404).json({ error: "Change order not found" });
+    }
+
+    const co = await prisma.changeOrder.update({
+      where: { id: idStr },
+      data: { status: "REJECTED", decidedAt: new Date() },
+    });
+
+    return res.json(co);
+  } catch (err) {
+    console.error("[changeOrders.reject]", err);
+    return res.status(500).json({ error: "Failed to reject change order" });
+  }
+});
+
+/**
  * GET /api/change-orders?projectId=...
  * List change orders for a project owned by the current user.
  */
