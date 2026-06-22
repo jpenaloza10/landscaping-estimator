@@ -1,0 +1,55 @@
+{
+  "name": "landscaping-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "prisma generate && tsc",
+    "start": "prisma migrate deploy && node dist/index.js",
+    "migrate:dev": "prisma migrate dev",
+    "generate": "prisma generate",
+    "migrate:prod": "dotenv -e .env.production -- npx prisma migrate deploy",
+    "db:push:prod": "dotenv -e .env.production -- npx prisma db push",
+    "start:prod": "dotenv -e .env.production -- node dist/index.js",
+    "check:assemblies": "ts-node scripts/checkAssemblies.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.17.0",
+    "@supabase/supabase-js": "^2.75.0",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "node-fetch": "^3.3.2",
+    "pdfkit": "^0.17.2",
+    "pg": "^8.16.3",
+    "postgres": "^3.4.7",
+    "taxjar": "^4.1.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.23",
+    "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.18.10",
+    "@types/pdfkit": "^0.17.3",
+    "@types/supertest": "^6.0.3",
+    "cross-env": "^10.1.0",
+    "dotenv-cli": "^10.0.0",
+    "jest": "^30.2.0",
+    "prisma": "^6.17.0",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.16.2",
+    "typescript": "^5.9.3"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  }
+}

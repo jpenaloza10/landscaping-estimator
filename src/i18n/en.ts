@@ -39,6 +39,8 @@ export const en = {
     estimates: "Estimates",
     estimator: "Estimator",
     expenses: "Expenses",
+    categories: "Categories",
+    pricing: "Price Sheet",
     signOut: "Sign Out",
     signingOut: "Signing out…",
   },
@@ -102,6 +104,8 @@ export const en = {
     noFinancialData: "No financial data yet.",
     loading: "Loading projects…",
     loadingBudget: "Loading…",
+    projectProfitTracker: "Project Profit Tracker",
+    projectName: "Project",
   },
 
   projects: {
@@ -155,6 +159,10 @@ export const en = {
     estimatesTotal: "Estimates Total",
     approvedCOs: "Approved COs",
     contractValue: "Contract Value",
+    expenses: "Expenses",
+    grossProfit: "Gross Profit",
+    profitMargin: "Profit Margin",
+    trackExpenses: "Track Expenses →",
     created: "Created {{date}}",
     notFound: "Project not found.",
     loadFailed: "Failed to load project",

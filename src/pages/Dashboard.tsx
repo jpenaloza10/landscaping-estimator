@@ -7,6 +7,8 @@ import {
   type Project,
   getDashboardSummary,
   type DashboardSummary,
+  getDashboardProjectsFinancial,
+  type DashboardProjectFinancial,
 } from "../lib/api";
 
 export default function Dashboard() {
@@ -20,19 +22,24 @@ export default function Dashboard() {
   const [summaryErr, setSummaryErr] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
+  const [projectFinancials, setProjectFinancials] = useState<DashboardProjectFinancial[]>([]);
+  const [loadingFinancials, setLoadingFinancials] = useState(true);
+
   // Prefer user.name, then email, then a friendly fallback
   const displayName = user?.name ?? user?.email ?? "there";
 
   useEffect(() => {
     (async () => {
       try {
-        // Load projects + summary in parallel
-        const [projectList, dashSummary] = await Promise.all([
+        // Load projects + summary + financials in parallel
+        const [projectList, dashSummary, financialsData] = await Promise.all([
           getProjects(),
           getDashboardSummary(),
+          getDashboardProjectsFinancial().catch(() => ({ projects: [] })),
         ]);
         setProjects(projectList || []);
         setSummary(dashSummary);
+        setProjectFinancials(financialsData.projects || []);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Failed to load dashboard data";
         setProjectsErr(msg);
@@ -40,6 +47,7 @@ export default function Dashboard() {
       } finally {
         setLoadingProjects(false);
         setLoadingSummary(false);
+        setLoadingFinancials(false);
       }
     })();
   }, []);
@@ -199,12 +207,83 @@ export default function Dashboard() {
     </div>
   );
 
+  // 5) Per-project profit tracker
+  const ProjectProfitCard = (
+    <div className="brand-card">
+      <div className="flex items-center justify-between mb-4">
+        <p className="brand-eyebrow">{t("dashboard.projectProfitTracker")}</p>
+        <Link to="/projects" className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors">
+          {t("dashboard.viewAll")}
+        </Link>
+      </div>
+
+      {loadingFinancials && (
+        <p className="font-sans text-xs text-brand-cream-dim animate-pulse">{t("dashboard.loading")}</p>
+      )}
+      {!loadingFinancials && projectFinancials.length === 0 && (
+        <p className="font-sans text-xs text-brand-cream-dim">{t("dashboard.noProjects")}</p>
+      )}
+      {!loadingFinancials && projectFinancials.length > 0 && (
+        <div className="overflow-x-auto -mx-5 px-5">
+          <table className="w-full min-w-[560px] text-left">
+            <thead>
+              <tr className="border-b border-brand-cream/15">
+                {[
+                  t("dashboard.projectName"),
+                  t("dashboard.contract"),
+                  t("dashboard.expenses"),
+                  t("dashboard.grossProfit"),
+                  t("dashboard.margin"),
+                ].map((h) => (
+                  <th key={h} className="pb-2 pr-4 font-sans text-[9px] font-semibold tracking-[0.2em] uppercase text-brand-cream-dim whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-brand-cream/10">
+              {projectFinancials.map((p) => {
+                const margin = p.contractValue > 0 ? (p.grossProfit / p.contractValue) * 100 : 0;
+                const marginColor = margin >= 20 ? "text-emerald-400" : margin >= 10 ? "text-brand-orange-light" : "text-brand-orange";
+                return (
+                  <tr key={p.id} className="group hover:bg-brand-cream/3 transition-colors">
+                    <td className="py-2.5 pr-4">
+                      <Link to={`/projects/${p.id}`} className="font-serif text-sm font-bold italic text-brand-cream group-hover:text-brand-orange transition-colors truncate max-w-[180px] block">
+                        {p.name}
+                      </Link>
+                      {(p.city || p.state) && (
+                        <span className="font-sans text-[10px] text-brand-cream-dim">{[p.city, p.state].filter(Boolean).join(", ")}</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-4 font-sans text-xs text-brand-cream whitespace-nowrap">
+                      ${p.contractValue.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                    </td>
+                    <td className="py-2.5 pr-4 font-sans text-xs text-brand-cream whitespace-nowrap">
+                      ${p.expensesTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                    </td>
+                    <td className={`py-2.5 pr-4 font-sans text-xs font-semibold whitespace-nowrap ${p.grossProfit < 0 ? "text-brand-orange" : "text-emerald-400"}`}>
+                      ${p.grossProfit.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                    </td>
+                    <td className={`py-2.5 font-sans text-xs font-bold whitespace-nowrap ${marginColor}`}>
+                      {margin.toFixed(1)}%
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {WelcomeCard}
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
           {RecentProjectsCard}
+          {ProjectProfitCard}
         </div>
         <div className="space-y-6">
           {QuickActionsCard}

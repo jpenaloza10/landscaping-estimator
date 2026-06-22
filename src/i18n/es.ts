@@ -41,6 +41,8 @@ export const es: Translations = {
     estimates: "Estimaciones",
     estimator: "Estimador",
     expenses: "Gastos",
+    categories: "Categorías",
+    pricing: "Hoja de precios",
     signOut: "Cerrar sesión",
     signingOut: "Cerrando sesión…",
   },
@@ -104,6 +106,8 @@ export const es: Translations = {
     noFinancialData: "Sin datos financieros aún.",
     loading: "Cargando proyectos…",
     loadingBudget: "Cargando…",
+    projectProfitTracker: "Seguimiento de ganancias por proyecto",
+    projectName: "Proyecto",
   },
 
   projects: {
@@ -157,6 +161,10 @@ export const es: Translations = {
     estimatesTotal: "Total de estimaciones",
     approvedCOs: "OC aprobadas",
     contractValue: "Valor del contrato",
+    expenses: "Gastos",
+    grossProfit: "Ganancia bruta",
+    profitMargin: "Margen de ganancia",
+    trackExpenses: "Registrar gastos →",
     created: "Creado {{date}}",
     notFound: "Proyecto no encontrado.",
     loadFailed: "Error al cargar el proyecto",

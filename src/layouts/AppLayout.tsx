@@ -15,11 +15,13 @@ export default function AppLayout() {
   const { t } = useTranslation();
 
   const NAV_ITEMS = [
-    { label: t("nav.dashboard"), to: "/dashboard" },
-    { label: t("nav.projects"),  to: "/projects"  },
-    { label: t("nav.estimates"), to: "/estimates" },
-    { label: t("nav.estimator"), to: "/estimate"  },
-    { label: t("nav.expenses"),  to: "/expenses"  },
+    { label: t("nav.dashboard"),   to: "/dashboard"  },
+    { label: t("nav.projects"),    to: "/projects"   },
+    { label: t("nav.estimates"),   to: "/estimates"  },
+    { label: t("nav.estimator"),   to: "/estimate"   },
+    { label: t("nav.expenses"),    to: "/expenses"   },
+    { label: t("nav.categories"),  to: "/categories" },
+    { label: t("nav.pricing"),     to: "/pricing"    },
   ];
 
   const displayName   = user?.name ?? user?.email ?? "Account";

@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* ─── Brand theme tokens (Tailwind v4 @theme) ─── */
+@theme {
+  /* Colors */
+  --color-brand-green:        #1B3A1E;
+  --color-brand-green-mid:    #243F27;
+  --color-brand-green-dark:   #111E12;
+  --color-brand-cream:        #F4EFE4;
+  --color-brand-cream-dim:    #D9D1C0;
+  --color-brand-orange:       #E07830;
+  --color-brand-orange-light: #F0924A;
+
+  /* Font families */
+  --font-sans:   "Montserrat", system-ui, sans-serif;
+  --font-serif:  "Playfair Display", Georgia, serif;
+  --font-script: "Dancing Script", cursive;
+}
+
+/* ─── Hard-coded CSS custom properties (guarantee runtime availability) ─── */
+:root {
+  --brand-green:        #1B3A1E;
+  --brand-green-mid:    #243F27;
+  --brand-green-dark:   #111E12;
+  --brand-cream:        #F4EFE4;
+  --brand-cream-dim:    #D9D1C0;
+  --brand-orange:       #E07830;
+  --brand-orange-light: #F0924A;
+}
+
+/* ─── Base: guarantee green background on every page ─── */
+html {
+  background-color: var(--brand-green);
+  color: var(--brand-cream);
+  font-family: "Montserrat", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100%;
+}
+
+body,
+#root {
+  min-height: 100%;
+  background-color: var(--brand-green);
+  color: var(--brand-cream);
+}
+
+/* ─── Reusable brand component classes ─── */
+@layer components {
+  /* Input field */
+  .brand-input {
+    @apply w-full bg-transparent border border-brand-cream/30 rounded-sm px-3 py-2
+           text-brand-cream placeholder:text-brand-cream-dim/50 text-sm font-sans
+           focus:outline-none focus:border-brand-cream/70 transition-colors;
+  }
+
+  /* Primary button — cream fill, inverts on hover */
+  .btn-brand-primary {
+    @apply inline-flex items-center justify-center
+           bg-brand-cream text-brand-green font-sans font-bold
+           text-[11px] tracking-[0.18em] uppercase px-6 py-3
+           border-2 border-brand-cream
+           transition-all hover:bg-transparent hover:text-brand-cream;
+  }
+
+  /* Outline button — transparent, cream border */
+  .btn-brand-outline {
+    @apply inline-flex items-center justify-center
+           bg-transparent text-brand-cream font-sans font-bold
+           text-[11px] tracking-[0.18em] uppercase px-6 py-3
+           border-2 border-brand-cream
+           transition-all hover:bg-brand-cream hover:text-brand-green;
+  }
+
+  /* Orange accent button */
+  .btn-brand-orange {
+    @apply inline-flex items-center justify-center
+           bg-brand-orange text-brand-cream font-sans font-bold
+           text-[11px] tracking-[0.18em] uppercase px-6 py-3
+           border-2 border-brand-orange
+           transition-all hover:bg-transparent hover:text-brand-orange;
+  }
+
+  /* Glass card on dark background */
+  .brand-card {
+    @apply bg-brand-cream/5 border border-brand-cream/15 rounded-sm p-5;
+  }
+
+  /* Card on light (cream) background */
+  .brand-card-light {
+    @apply bg-white/80 border border-brand-green/10 rounded-sm p-5;
+  }
+
+  /* Section eyebrow label */
+  .brand-eyebrow {
+    @apply font-sans text-[10px] font-semibold tracking-[0.28em] uppercase text-brand-orange;
+  }
+}

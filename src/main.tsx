@@ -22,6 +22,8 @@ import ProjectDetail from "./pages/ProjectDetail";
 import EstimateWizard from "./pages/EstimateWizard";
 import EstimatesList  from "./pages/EstimatesList";
 import Assemblies from "./pages/Assemblies";
+import Categories from "./pages/Categories";
+import Pricing from "./pages/Pricing";
 import Expenses from "./pages/Expenses";
 import ProposalViewer from "./pages/ProposalViewer";
 
@@ -64,7 +66,9 @@ const router = createBrowserRouter([
       { path: "/projectwizard",         element: <ProjectWizard /> }, // legacy alias
       { path: "/estimate",              element: <EstimateWizard /> },
       { path: "/estimates",             element: <EstimatesList /> },
-      { path: "/assemblies",            element: <Assemblies /> },
+      { path: "/assemblies",            element: <Assemblies /> },  // legacy alias
+      { path: "/categories",            element: <Categories /> },
+      { path: "/pricing",               element: <Pricing /> },
       { path: "/expenses",              element: <Expenses /> },
       { path: "/proposals/:estimateId", element: <ProposalViewer /> },
       { path: "/account",              element: <Account /> },

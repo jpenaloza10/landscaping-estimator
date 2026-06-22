@@ -403,6 +403,37 @@ export async function rejectChangeOrder(id: string): Promise<ChangeOrder> {
 }
 
 /* =========================
+   User Price Sheet
+   ========================= */
+export interface PriceSheetItem {
+  id: string | null;
+  category: string;
+  itemName: string;
+  unit: string;
+  unitPrice: number;
+  notes: string | null;
+  isCustom: boolean;
+}
+
+export async function getPriceSheet(): Promise<{ sheet: PriceSheetItem[] }> {
+  return api("/api/pricing/sheet");
+}
+
+export async function savePriceSheet(items: Array<{
+  category: string;
+  itemName: string;
+  unit: string;
+  unitPrice: number;
+  notes?: string;
+}>): Promise<{ ok: boolean }> {
+  return api("/api/pricing/sheet", { method: "PUT", body: { items } });
+}
+
+export async function resetPriceSheet(): Promise<{ ok: boolean }> {
+  return api("/api/pricing/sheet/reset", { method: "POST" });
+}
+
+/* =========================
    Convenience alias
    ========================= */
 export const authedFetch = api;

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Landscaping Estimator – Brand Mockup</title>
+
+  <!-- Fonts matching The Forestta aesthetic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green-deep:   #1B3A1E;
+      --green-mid:    #243F27;
+      --cream:        #F4EFE4;
+      --cream-dim:    #D9D1C0;
+      --orange:       #E07830;
+      --orange-light: #F0924A;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--green-deep);
+      color: var(--cream);
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      height: 60px;
+      background: var(--cream);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 36px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--green-deep);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--orange); }
+
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      font-style: italic;
+      color: var(--green-deep);
+      letter-spacing: 0.02em;
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 60px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle texture overlay */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 60% at 50% 45%, rgba(36,63,39,0.55) 0%, transparent 100%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%231B3A1E'/%3E%3Crect width='1' height='1' fill='%23203D23' opacity='0.4'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      max-width: 760px;
+      width: 100%;
+    }
+
+    .hero-the {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 400;
+      font-style: italic;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+      margin-bottom: 2px;
+    }
+
+    .hero-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(72px, 13vw, 130px);
+      font-weight: 900;
+      font-style: italic;
+      line-height: 0.88;
+      color: var(--cream);
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+
+    .hero-title span.stroke {
+      -webkit-text-stroke: 2px var(--cream);
+      color: transparent;
+    }
+
+    .hero-sub {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(30px, 5.5vw, 58px);
+      font-weight: 700;
+      font-style: italic;
+      color: var(--cream);
+      letter-spacing: 0.04em;
+      margin-bottom: 36px;
+    }
+
+    /* Tag / badge element — matches Forestta "Savour the freshness" badge */
+    .hero-badge {
+      display: inline-block;
+      position: relative;
+      padding: 14px 44px 14px 44px;
+      border: 2px solid var(--cream);
+      border-radius: 4px;
+      margin-bottom: 48px;
+    }
+
+    /* Left notch */
+    .hero-badge::before {
+      content: '';
+      position: absolute;
+      left: -14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      background: var(--cream);
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px var(--green-deep), 0 0 0 6px var(--cream);
+    }
+
+    /* Right notch */
+    .hero-badge::after {
+      content: '';
+      position: absolute;
+      right: -14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      background: var(--cream);
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px var(--green-deep), 0 0 0 6px var(--cream);
+    }
+
+    .badge-eyebrow {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 2px;
+    }
+
+    .badge-script {
+      font-family: 'Dancing Script', cursive;
+      font-size: 30px;
+      color: var(--cream);
+      line-height: 1.1;
+    }
+
+    /* CTA buttons */
+    .hero-cta {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--green-deep);
+      background: var(--cream);
+      border: 2px solid var(--cream);
+      padding: 14px 36px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-primary:hover {
+      background: transparent;
+      color: var(--cream);
+    }
+
+    .btn-outline {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--cream);
+      background: transparent;
+      border: 2px solid var(--cream);
+      padding: 14px 36px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-outline:hover {
+      background: var(--cream);
+      color: var(--green-deep);
+    }
+
+    /* Down arrow */
+    .scroll-hint {
+      position: absolute;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      animation: bounce 2s infinite;
+    }
+
+    .scroll-hint svg { opacity: 0.5; }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50%       { transform: translateX(-50%) translateY(6px); }
+    }
+
+    /* ─── FEATURES STRIP ─── */
+    .features {
+      background: var(--cream);
+      padding: 72px 48px;
+    }
+
+    .features-label {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--orange);
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .features-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(32px, 4vw, 52px);
+      font-weight: 900;
+      font-style: italic;
+      color: var(--green-deep);
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 40px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .feature-card {
+      text-align: center;
+    }
+
+    .feature-icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 16px;
+      background: var(--green-deep);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .feature-icon svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--cream);
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .feature-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--green-deep);
+      margin-bottom: 8px;
+    }
+
+    .feature-desc {
+      font-size: 13px;
+      font-weight: 400;
+      color: #5A6B5C;
+      line-height: 1.65;
+    }
+
+    /* ─── ESTIMATE PREVIEW ─── */
+    .preview {
+      background: var(--green-mid);
+      padding: 80px 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .preview-label {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 12px;
+    }
+
+    .preview-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(30px, 4vw, 48px);
+      font-weight: 900;
+      font-style: italic;
+      color: var(--cream);
+      margin-bottom: 48px;
+      text-align: center;
+    }
+
+    .estimate-card {
+      background: rgba(244, 239, 228, 0.05);
+      border: 1px solid rgba(244, 239, 228, 0.18);
+      border-radius: 2px;
+      padding: 36px 40px;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .estimate-card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 13px;
+      font-style: italic;
+      color: var(--cream-dim);
+      letter-spacing: 0.08em;
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(244,239,228,0.15);
+      padding-bottom: 14px;
+    }
+
+    .estimate-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(244,239,228,0.08);
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--cream-dim);
+    }
+
+    .estimate-row:last-child { border-bottom: none; }
+
+    .estimate-row .label { letter-spacing: 0.05em; }
+
+    .estimate-row .value {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--cream);
+    }
+
+    .estimate-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      padding-top: 18px;
+      border-top: 2px solid rgba(244,239,228,0.3);
+    }
+
+    .estimate-total .label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--cream-dim);
+    }
+
+    .estimate-total .value {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--orange-light);
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      background: #111E12;
+      padding: 36px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      font-weight: 700;
+      font-style: italic;
+      color: var(--cream);
+    }
+
+    .footer-copy {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--cream-dim);
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <ul class="nav-links">
+      <li><a href="#">Projects</a></li>
+      <li><a href="#">Estimates</a></li>
+    </ul>
+
+    <span class="nav-logo">Landscaping Estimator</span>
+
+    <ul class="nav-links">
+      <li><a href="#">Expenses</a></li>
+      <li><a href="#">Sign In</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+      <p class="hero-the">The</p>
+
+      <h1 class="hero-title">Landscaping</h1>
+      <h2 class="hero-sub">Estimator</h2>
+
+      <!-- Badge — mirrors "Savour the freshness" tag -->
+      <div class="hero-badge">
+        <p class="badge-eyebrow">Build Your</p>
+        <p class="badge-script">perfect estimate</p>
+      </div>
+
+      <div class="hero-cta">
+        <a href="#" class="btn-primary">Get Started</a>
+        <a href="#" class="btn-outline">View Projects</a>
+      </div>
+    </div>
+
+    <!-- Scroll arrow -->
+    <div class="scroll-hint">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M12 5v14M5 12l7 7 7-7"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- FEATURES STRIP -->
+  <section class="features">
+    <p class="features-label">Everything you need</p>
+    <h2 class="features-heading">Built for the field</h2>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        </div>
+        <h3 class="feature-title">Instant Estimates</h3>
+        <p class="feature-desc">Select an assembly, enter square footage, and get a fully itemised cost breakdown in seconds.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <h3 class="feature-title">Live Pricing</h3>
+        <p class="feature-desc">Regional labour rates and material costs applied automatically based on your ZIP code.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </div>
+        <h3 class="feature-title">Proposal PDFs</h3>
+        <p class="feature-desc">Generate client-ready proposal documents with one click, straight from any estimate.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <h3 class="feature-title">Budget Tracking</h3>
+        <p class="feature-desc">Log expenses against projects and watch your gross profit update in real time.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ESTIMATE PREVIEW -->
+  <section class="preview">
+    <p class="preview-label">See it in action</p>
+    <h2 class="preview-heading">Your estimate, at a glance</h2>
+
+    <div class="estimate-card">
+      <p class="estimate-card-title">Sod Installation – 1,200 sqft · San Jose, CA 95110</p>
+
+      <div class="estimate-row">
+        <span class="label">Sod material</span>
+        <span class="value">$1,320.00</span>
+      </div>
+      <div class="estimate-row">
+        <span class="label">Soil prep &amp; grading (labour)</span>
+        <span class="value">$480.00</span>
+      </div>
+      <div class="estimate-row">
+        <span class="label">Edging &amp; borders</span>
+        <span class="value">$145.00</span>
+      </div>
+      <div class="estimate-row">
+        <span class="label">Delivery (allocated)</span>
+        <span class="value">$95.00</span>
+      </div>
+      <div class="estimate-row">
+        <span class="label">Sales tax (9.25%)</span>
+        <span class="value">$188.68</span>
+      </div>
+
+      <div class="estimate-total">
+        <span class="label">Total</span>
+        <span class="value">$2,228.68</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <span class="footer-logo">Landscaping Estimator</span>
+    <span class="footer-copy">© 2026 · All rights reserved</span>
+  </footer>
+
+</body>
+</html>

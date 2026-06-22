@@ -5,6 +5,7 @@ import {
   authedFetch,
   updateEstimateStatus,
   listChangeOrders,
+  listExpenses,
   createChangeOrder,
   approveChangeOrder,
   rejectChangeOrder,
@@ -50,11 +51,12 @@ export default function ProjectDetail() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [project,   setProject]   = useState<Project | null>(null);
-  const [estimates, setEstimates] = useState<Estimate[]>([]);
-  const [cos,       setCos]       = useState<ChangeOrder[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [err,       setErr]       = useState<string | null>(null);
+  const [project,         setProject]         = useState<Project | null>(null);
+  const [estimates,       setEstimates]       = useState<Estimate[]>([]);
+  const [cos,             setCos]             = useState<ChangeOrder[]>([]);
+  const [expensesTotal,   setExpensesTotal]   = useState(0);
+  const [loading,         setLoading]         = useState(true);
+  const [err,             setErr]             = useState<string | null>(null);
 
   const [updatingEstId, setUpdatingEstId] = useState<string | null>(null);
   const [updatingCoId,  setUpdatingCoId]  = useState<string | null>(null);
@@ -75,12 +77,13 @@ export default function ProjectDetail() {
       try {
         setLoading(true); setErr(null);
 
-        const [projectData, estimatesData, changeOrdersData] = await Promise.all([
+        const [projectData, estimatesData, changeOrdersData, expensesData] = await Promise.all([
           authedFetch<Project>(`/api/projects/${id}`, { signal: ac.signal }),
           authedFetch<Estimate[] | { estimates: Estimate[] }>(
             `/api/projects/${id}/estimates`, { signal: ac.signal }
           ).catch(() => []),
           listChangeOrders(Number(id)).catch(() => []),
+          listExpenses(Number(id)).catch(() => ({ expenses: [] })),
         ]);
 
         setProject(projectData);
@@ -89,6 +92,10 @@ export default function ProjectDetail() {
           : (estimatesData as { estimates: Estimate[] }).estimates ?? [];
         setEstimates(list);
         setCos(changeOrdersData);
+        const expList = Array.isArray(expensesData)
+          ? expensesData
+          : (expensesData as { expenses: Array<{ amount: number }> }).expenses ?? [];
+        setExpensesTotal(expList.reduce((s, e) => s + Number(e.amount ?? 0), 0));
       } catch (e: unknown) {
         if ((e as { name?: string })?.name === "AbortError") return;
         if (e instanceof ApiError && e.status === 401) { navigate("/login", { replace: true }); return; }
@@ -155,6 +162,9 @@ export default function ProjectDetail() {
 
   const estimatesTotal = estimates.reduce((s, e) => s + Number(e.total ?? 0), 0);
   const contractValue  = estimatesTotal + approvedCoTotal;
+  const grossProfit    = contractValue - expensesTotal;
+  const profitMargin   = contractValue > 0 ? (grossProfit / contractValue) * 100 : 0;
+  const marginColor    = profitMargin >= 20 ? "text-emerald-400" : profitMargin >= 10 ? "text-brand-orange-light" : "text-brand-orange";
 
   if (loading) {
     return (
@@ -203,20 +213,54 @@ export default function ProjectDetail() {
       </div>
 
       {/* ── Financial summary strip ── */}
-      {(estimates.length > 0 || cos.length > 0) && (
-        <div className="grid grid-cols-3 gap-3">
+      {(estimates.length > 0 || cos.length > 0 || expensesTotal > 0) && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
-            { label: t("projectDetail.estimatesTotal"),  value: estimatesTotal  },
-            { label: t("projectDetail.approvedCOs"),     value: approvedCoTotal },
-            { label: t("projectDetail.contractValue"),   value: contractValue   },
-          ].map(({ label, value }) => (
+            { label: t("projectDetail.estimatesTotal"),  value: estimatesTotal,  color: "text-brand-orange-light" },
+            { label: t("projectDetail.approvedCOs"),     value: approvedCoTotal, color: "text-brand-orange-light" },
+            { label: t("projectDetail.contractValue"),   value: contractValue,   color: "text-brand-cream"        },
+            { label: t("projectDetail.expenses"),        value: expensesTotal,   color: "text-brand-cream"        },
+            { label: t("projectDetail.grossProfit"),     value: grossProfit,     color: grossProfit < 0 ? "text-brand-orange" : "text-emerald-400" },
+          ].map(({ label, value, color }) => (
             <div key={label} className="brand-card py-3 text-center">
               <p className="font-sans text-[9px] tracking-[0.2em] uppercase text-brand-cream-dim mb-1">{label}</p>
-              <p className="font-serif text-lg font-black italic text-brand-orange-light">
+              <p className={`font-serif text-lg font-black italic ${color}`}>
                 ${Number(value).toLocaleString("en-US", { minimumFractionDigits: 0 })}
               </p>
             </div>
           ))}
+        </div>
+      )}
+      {/* ── Profit margin indicator ── */}
+      {contractValue > 0 && (
+        <div className="brand-card py-3">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-sans text-[9px] tracking-[0.2em] uppercase text-brand-cream-dim mb-0.5">
+                {t("projectDetail.profitMargin")}
+              </p>
+              <p className={`font-serif text-2xl font-black italic ${marginColor}`}>
+                {profitMargin.toFixed(1)}%
+              </p>
+            </div>
+            {/* Progress bar */}
+            <div className="flex-1 max-w-xs">
+              <div className="h-1.5 bg-brand-cream/10 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${profitMargin >= 20 ? "bg-emerald-400" : profitMargin >= 10 ? "bg-brand-orange-light" : "bg-brand-orange"}`}
+                  style={{ width: `${Math.min(Math.max(profitMargin, 0), 100)}%` }}
+                />
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="font-sans text-[9px] text-brand-cream-dim">0%</span>
+                <span className="font-sans text-[9px] text-brand-cream-dim">20%</span>
+                <span className="font-sans text-[9px] text-brand-cream-dim">40%+</span>
+              </div>
+            </div>
+            <Link to="/expenses" className="shrink-0 font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors">
+              {t("projectDetail.trackExpenses")}
+            </Link>
+          </div>
         </div>
       )}
 

@@ -1,0 +1,307 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  email           String    @unique
+  name            String
+  created_at      DateTime  @default(now())
+  password_hash   String
+  updated_at      DateTime  @updatedAt
+  id              Int       @id @default(autoincrement())
+  projects        Project[]
+  createdExpenses Expense[] @relation("UserExpenseCreated")
+}
+
+model Project {
+  id          Int     @id @default(autoincrement())
+  user_id     Int
+  name        String
+  description String?
+
+  // New fields
+  address     String?
+  city        String?
+  state       String?
+  postal_code String?
+  country     String?
+  latitude    Float?
+  longitude   Float?
+  // keep the original simple location string for display/search if you like
+  location    String?
+
+  estimates       Estimate[]
+  budgetSnapshots BudgetSnapshot[]
+  expenses        Expense[]
+  changeOrders    ChangeOrder[]    @relation(name: "ProjectChangeOrders")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([city, state, country])
+  @@index([latitude, longitude])
+}
+
+model Assembly {
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  name          String
+  trade         String // e.g., "Hardscape", "Irrigation"
+  unit          String // e.g., "sqft", "lf"
+  wastePct      Float          @default(0.05) // 5% default waste
+  items         AssemblyItem[]
+  templateLines TemplateLine[]
+  estimateLines EstimateLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AssemblyItem {
+  id         String   @id @default(cuid())
+  assemblyId String
+  assembly   Assembly @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  name       String
+  unit       String // e.g., "pallet", "ton", "bag", "hr"
+  unitCost   Decimal  @db.Decimal(10, 2)
+  qtyFormula String // store a simple expression like "area/100" or "perimeter/10"
+
+  /// Sprint 3 (optional, recommended):
+  /// Link an item to a catalog Material for dynamic pricing.
+  materialId String?
+  material   Material? @relation(fields: [materialId], references: [id])
+
+  @@index([materialId])
+}
+
+model Template {
+  id          String         @id @default(cuid())
+  name        String         @unique
+  description String?
+  lines       TemplateLine[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model TemplateLine {
+  id         String   @id @default(cuid())
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  assemblyId String
+  assembly   Assembly @relation(fields: [assemblyId], references: [id], onDelete: Restrict)
+  // optional defaults (e.g., base area, depth)
+  defaults   Json?
+}
+
+model Estimate {
+  id        String         @id @default(cuid())
+  projectId Int            @map("project_id")
+  // link to your Project model if you have one:
+  project   Project?       @relation(fields: [projectId], references: [id])
+  title     String?        // Optional descriptive name, e.g. "Phase 1 – Patio & Sod"
+  status    String         @default("DRAFT") // DRAFT | SENT | APPROVED | REJECTED
+  subtotal  Decimal        @default(0) @db.Decimal(12, 2)
+  tax       Decimal        @default(0) @db.Decimal(12, 2)
+  total     Decimal        @default(0) @db.Decimal(12, 2)
+  lines     EstimateLine[]
+  location  Json? // { zip, city, state, country, lat, lng, vendorLat?, vendorLng? }
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  budgetSnapshots BudgetSnapshot[]
+  expenses        Expense[]
+  changeOrders    ChangeOrder[]    @relation(name: "EstimateChangeOrders")
+
+  @@index([projectId])
+}
+
+model EstimateLine {
+  id         String   @id @default(cuid())
+  estimateId String
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  assemblyId String
+  assembly   Assembly @relation(fields: [assemblyId], references: [id], onDelete: Restrict)
+  inputs     Json // e.g., { area: 320, perimeter: 80, depthIn: 2 }
+  items      Json // resolved items w/ qty & cost at calc-time (include provider/source meta)
+  lineTotal  Decimal  @db.Decimal(12, 2)
+  notes      String?
+
+  expenses Expense[]
+
+  @@index([estimateId])
+  @@index([assemblyId])
+}
+
+/// Catalog of priceable materials (stone, sand, pipe, mulch, etc.)
+model Material {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  uom       String // "ton", "pallet", "bag", "hr"
+  density   Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vendorPrices  VendorPrice[]
+  priceSnaps    PriceSnapshot[]
+  assemblyItems AssemblyItem[]
+
+  @@index([slug])
+}
+
+/// Suppliers, retailers, or index sources
+model Vendor {
+  id        String   @id @default(cuid())
+  name      String
+  type      String // "supplier" | "retail" | "marketplace" | "index"
+  homeZip   String?
+  regions   String[] // served zips/regions (optional)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prices VendorPrice[]
+
+  @@index([type])
+  @@index([homeZip])
+}
+
+/// Normalized vendor pricing records (latest wins)
+model VendorPrice {
+  id       String @id @default(cuid())
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  sku         String?
+  locationKey String? // zip, storeId, region code
+  currency    String   @default("USD")
+  unitCost    Decimal  @db.Decimal(12, 4)
+  fetchedAt   DateTime @default(now())
+  sourceMeta  Json?
+
+  @@index([materialId, vendorId])
+  @@index([materialId, locationKey])
+  @@index([fetchedAt])
+}
+
+/// Regional multipliers for costs (labor or baseline materials)
+/// Example keys: "94103", "US-CA-LosAngeles", "US-CA"
+model RegionalFactor {
+  id        String   @id @default(cuid())
+  regionKey String   @unique
+  factor    Float // 1.12 => +12% vs baseline
+  asOf      DateTime @default(now())
+  source    String // "city_index" | "manual"
+
+  @@index([regionKey])
+  @@index([asOf])
+}
+
+/// Cached, auditable resolved prices by material & zip
+model PriceSnapshot {
+  id         String   @id @default(cuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  zip        String
+  unitCost   Decimal  @db.Decimal(12, 4)
+  currency   String   @default("USD")
+  source     String // "supplier" | "retail" | "marketplace" | "index"
+  provider   String // e.g., "SupplierCSV", "RetailX", "CityIndex"
+  fetchedAt  DateTime @default(now())
+  ttlMinutes Int      @default(1440)
+  meta       Json?
+
+  @@index([materialId, zip, fetchedAt])
+  @@index([zip])
+}
+
+enum ExpenseCategory {
+  MATERIAL
+  LABOR
+  EQUIPMENT
+  SUBCONTRACTOR
+  OTHER
+}
+
+model BudgetSnapshot {
+  id         String   @id @default(cuid())
+  projectId  Int
+  project    Project  @relation(fields: [projectId], references: [id])
+  estimateId String
+  estimate   Estimate @relation(fields: [estimateId], references: [id])
+
+  total      Decimal  @db.Decimal(12, 2)
+  byCategory Json
+  createdAt  DateTime @default(now())
+
+  @@index([projectId])
+  @@index([estimateId])
+}
+
+model Expense {
+  id             String        @id @default(cuid())
+  projectId      Int
+  project        Project       @relation(fields: [projectId], references: [id])
+  estimateId     String?
+  estimate       Estimate?     @relation(fields: [estimateId], references: [id])
+  estimateLineId String?
+  estimateLine   EstimateLine? @relation(fields: [estimateLineId], references: [id])
+
+  category    ExpenseCategory
+  vendor      String?
+  description String?
+  amount      Decimal         @db.Decimal(12, 2)
+  currency    String          @default("USD")
+  date        DateTime
+  // optional links to storage/ocr
+  receiptUrl  String?
+  meta        Json?
+
+  userId Int?
+  user   User? @relation("UserExpenseCreated", fields: [userId], references: [id])
+
+  createdById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([estimateId])
+  @@index([category])
+  @@index([date])
+}
+
+model ChangeOrder {
+  id String @id @default(cuid())
+
+  // FIX: Match Project.id (Int) and add named relation + onDelete
+  projectId Int
+  project   Project @relation(name: "ProjectChangeOrders", fields: [projectId], references: [id], onDelete: Cascade)
+
+  // FIX: Back-relation on Estimate and onDelete: SetNull
+  estimateId String?
+  estimate   Estimate? @relation(name: "EstimateChangeOrders", fields: [estimateId], references: [id], onDelete: SetNull)
+
+  title       String
+  description String?
+  status      String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  amount      Decimal   @db.Decimal(12, 2) // net change (+/-)
+  createdAt   DateTime  @default(now())
+  decidedAt   DateTime?
+
+  meta Json?
+
+  @@index([projectId])
+  @@index([estimateId])
+  @@index([status])
+}
