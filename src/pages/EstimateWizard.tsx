@@ -242,8 +242,11 @@ export default function EstimateWizard() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>{t("estimateWizard.assembly")}</label>
+                <label className={labelClass}>{t("estimateWizard.category")}</label>
                 <select className={selectClass} value={assemblyId} onChange={(e) => setAssemblyId(e.target.value)}>
+                  {assemblies.length === 0 && (
+                    <option value="">{t("estimateWizard.noCategories")}</option>
+                  )}
                   {assemblies.map((a) => (
                     <option key={a.id} value={String(a.id)}>{a.name}</option>
                   ))}
@@ -253,6 +256,11 @@ export default function EstimateWizard() {
                     {selectedAssembly.items?.length ?? 0} items
                     {typeof selectedAssembly.wastePct === "number" ? ` · ${Math.round((selectedAssembly.wastePct || 0) * 100)}% waste` : ""}
                     {selectedAssembly.unit ? ` · ${selectedAssembly.unit}` : ""}
+                  </p>
+                )}
+                {assemblies.length === 0 && (
+                  <p className="font-sans text-[10px] text-brand-orange mt-1.5">
+                    {t("estimateWizard.noCategoriesNote")}
                   </p>
                 )}
               </div>
@@ -348,16 +356,24 @@ export default function EstimateWizard() {
                     {!entry.skipped && (
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div>
-                          <label className={labelClass}>{t("estimateWizard.assembly")}</label>
+                          <label className={labelClass}>{t("estimateWizard.category")}</label>
                           <select
                             className={selectClass}
                             value={entry.assemblyId}
                             onChange={(e) => updatePhase(currentPhase, { assemblyId: e.target.value })}
                           >
+                            {assemblies.length === 0 && (
+                              <option value="">{t("estimateWizard.noCategories")}</option>
+                            )}
                             {assemblies.map((a) => (
                               <option key={a.id} value={String(a.id)}>{a.name}</option>
                             ))}
                           </select>
+                          {assemblies.length === 0 && (
+                            <p className="font-sans text-[10px] text-brand-orange mt-1">
+                              {t("estimateWizard.noCategoriesNote")}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <label className={labelClass}>{t("estimateWizard.area")}</label>
