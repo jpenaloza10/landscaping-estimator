@@ -3,6 +3,8 @@ import {
   getBudgetReport,
   listExpenses,
   createExpense as createExpenseApi,
+  deleteExpense as deleteExpenseApi,
+  updateExpense as updateExpenseApi,
   getProjects,
   authedFetch,
   apiRaw,
@@ -55,6 +57,12 @@ export default function ExpensesPage() {
     date: new Date().toISOString().slice(0, 10),
   });
   const [loading, setLoading] = useState(true);
+
+  // Edit / delete state
+  const [editingId, setEditingId]   = useState<string | number | null>(null);
+  const [editForm, setEditForm]     = useState({ category: "MATERIAL", vendor: "", description: "", amount: "", date: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
 
   async function fetchBudgetReportForProject(projectId: number): Promise<BudgetReport> {
     return getBudgetReport(projectId) as Promise<BudgetReport>;
@@ -145,6 +153,50 @@ export default function ExpensesPage() {
       await refresh(activeProjectId);
     } catch (err) {
       console.error("AI categorization failed", err);
+    }
+  }
+
+  function startEdit(exp: Expense) {
+    setEditingId(exp.id);
+    setEditForm({
+      category:    exp.category,
+      vendor:      exp.vendor ?? "",
+      description: exp.description ?? "",
+      amount:      String(exp.amount),
+      date:        String(exp.date).slice(0, 10),
+    });
+  }
+
+  async function saveEdit(id: string | number) {
+    setSavingEdit(true);
+    try {
+      await updateExpenseApi(id, {
+        category:    editForm.category,
+        vendor:      editForm.vendor || undefined,
+        description: editForm.description || undefined,
+        amount:      parseFloat(editForm.amount) || 0,
+        date:        editForm.date,
+      });
+      if (activeProjectId != null) await refresh(activeProjectId);
+      setEditingId(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function handleDelete(id: string | number, label: string) {
+    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return;
+    setDeletingId(id);
+    try {
+      await deleteExpenseApi(id);
+      setExpenses((prev) => prev.filter((e) => e.id !== id));
+      if (activeProjectId != null) await refresh(activeProjectId);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -414,29 +466,85 @@ export default function ExpensesPage() {
                 )}
                 <div className="space-y-2">
                   {expenses.map((exp) => (
-                    <div
-                      key={exp.id}
-                      className="flex items-center justify-between gap-3 border-b border-brand-cream/10 pb-2 last:border-0"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-sans text-sm font-semibold text-brand-cream truncate">
-                          {exp.vendor || exp.category}
-                        </p>
-                        <p className="font-sans text-xs text-brand-cream-dim/50 truncate">
-                          {exp.description || exp.category} · {String(exp.date).slice(0, 10)}
-                        </p>
-                      </div>
-                      <div className="text-right flex items-center gap-3 shrink-0">
-                        <button
-                          onClick={() => handleAICategorize(exp.id)}
-                          className="font-sans text-[9px] tracking-wider uppercase text-brand-cream-dim/40 border border-brand-cream/10 px-2 py-1 hover:text-brand-orange hover:border-brand-orange/30 transition-colors"
-                        >
-                          Categorize
-                        </button>
-                        <p className="font-serif font-bold text-brand-cream text-sm">
-                          ${Number(exp.amount).toFixed(2)}
-                        </p>
-                      </div>
+                    <div key={exp.id} className="border-b border-brand-cream/10 pb-3 last:border-0 last:pb-0">
+                      {editingId === exp.id ? (
+                        /* ── Inline edit form ── */
+                        <div className="grid gap-2 sm:grid-cols-2 bg-brand-cream/5 border border-brand-cream/15 p-3 rounded-sm">
+                          <div>
+                            <label className="block font-sans text-[9px] tracking-widest uppercase text-brand-cream-dim mb-1">Category</label>
+                            <select
+                              className={selectCls}
+                              value={editForm.category}
+                              onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
+                            >
+                              {CATEGORIES.map((c) => <option key={c} className="bg-brand-green">{c}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block font-sans text-[9px] tracking-widest uppercase text-brand-cream-dim mb-1">Vendor</label>
+                            <input className={inputCls} value={editForm.vendor} onChange={(e) => setEditForm((f) => ({ ...f, vendor: e.target.value }))} placeholder="e.g. Home Depot" />
+                          </div>
+                          <div>
+                            <label className="block font-sans text-[9px] tracking-widest uppercase text-brand-cream-dim mb-1">Amount ($)</label>
+                            <input type="number" step="0.01" className={inputCls} value={editForm.amount} onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))} />
+                          </div>
+                          <div>
+                            <label className="block font-sans text-[9px] tracking-widest uppercase text-brand-cream-dim mb-1">Date</label>
+                            <input type="date" className={inputCls} value={editForm.date} onChange={(e) => setEditForm((f) => ({ ...f, date: e.target.value }))} />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block font-sans text-[9px] tracking-widest uppercase text-brand-cream-dim mb-1">Description</label>
+                            <input className={inputCls} value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} placeholder="Brief description" />
+                          </div>
+                          <div className="sm:col-span-2 flex justify-end gap-3 pt-1">
+                            <button onClick={() => setEditingId(null)} className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-cream transition-colors">Cancel</button>
+                            <button
+                              onClick={() => void saveEdit(exp.id)}
+                              disabled={savingEdit}
+                              className="btn-brand-primary py-1 px-3 text-[10px] disabled:opacity-40"
+                            >
+                              {savingEdit ? "Saving…" : "Save Changes"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* ── Normal row ── */
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-sans text-sm font-semibold text-brand-cream truncate">
+                              {exp.vendor || exp.category}
+                            </p>
+                            <p className="font-sans text-xs text-brand-cream-dim/50 truncate">
+                              {exp.description || exp.category} · {String(exp.date).slice(0, 10)}
+                            </p>
+                          </div>
+                          <div className="text-right flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => handleAICategorize(exp.id)}
+                              className="font-sans text-[9px] tracking-wider uppercase text-brand-cream-dim/40 border border-brand-cream/10 px-2 py-1 hover:text-brand-orange hover:border-brand-orange/30 transition-colors"
+                            >
+                              Categorize
+                            </button>
+                            <button
+                              onClick={() => startEdit(exp)}
+                              className="font-sans text-[9px] tracking-wider uppercase text-brand-cream-dim/50 border border-brand-cream/10 px-2 py-1 hover:text-brand-cream hover:border-brand-cream/30 transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <p className="font-serif font-bold text-brand-cream text-sm min-w-[60px] text-right">
+                              ${Number(exp.amount).toFixed(2)}
+                            </p>
+                            <button
+                              onClick={() => handleDelete(exp.id, exp.vendor || exp.description || exp.category)}
+                              disabled={deletingId === exp.id}
+                              className="font-sans text-[9px] tracking-wider uppercase text-brand-cream/20 hover:text-red-400 disabled:opacity-40 transition-colors px-1"
+                              title="Delete expense"
+                            >
+                              {deletingId === exp.id ? "…" : "✕"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

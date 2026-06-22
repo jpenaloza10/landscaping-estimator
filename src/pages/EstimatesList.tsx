@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   listAllEstimates,
   updateEstimateStatus,
+  updateEstimateTitle,
+  deleteEstimate,
   getProposalPdfUrl,
   ApiError,
   type EstimateSummary,
@@ -48,11 +50,14 @@ export default function EstimatesList() {
     { label: t("estimatesList.filterApproved"), value: "APPROVED" },
     { label: t("estimatesList.filterRejected"), value: "REJECTED" },
   ];
-  const [estimates, setEstimates] = useState<EstimateSummary[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [err, setErr]             = useState<string | null>(null);
-  const [filter, setFilter]       = useState<EstimateStatus | "ALL">("ALL");
-  const [updating, setUpdating]   = useState<string | null>(null); // estimateId being updated
+  const [estimates, setEstimates]   = useState<EstimateSummary[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [err, setErr]               = useState<string | null>(null);
+  const [filter, setFilter]         = useState<EstimateStatus | "ALL">("ALL");
+  const [updating, setUpdating]     = useState<string | null>(null);
+  const [deleting, setDeleting]     = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState<string | null>(null); // estimateId being renamed
+  const [titleDraft, setTitleDraft] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -84,6 +89,38 @@ export default function EstimatesList() {
       alert(e instanceof Error ? e.message : "Failed to update status");
     } finally {
       setUpdating(null);
+    }
+  }
+
+  async function handleDelete(estimateId: string, title: string) {
+    const label = title || `Estimate #${estimateId.slice(-6)}`;
+    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return;
+    setDeleting(estimateId);
+    try {
+      await deleteEstimate(estimateId);
+      setEstimates((prev) => prev.filter((e) => e.id !== estimateId));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to delete estimate");
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  function startEditTitle(est: EstimateSummary) {
+    setEditingTitle(est.id);
+    setTitleDraft(est.title ?? "");
+  }
+
+  async function saveTitle(estimateId: string) {
+    try {
+      await updateEstimateTitle(estimateId, titleDraft.trim());
+      setEstimates((prev) =>
+        prev.map((e) => e.id === estimateId ? { ...e, title: titleDraft.trim() || null } : e)
+      );
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to rename estimate");
+    } finally {
+      setEditingTitle(null);
     }
   }
 
@@ -216,10 +253,34 @@ export default function EstimatesList() {
                       )}
                     </div>
 
-                    {/* Title or fallback ID */}
-                    <p className="font-serif text-lg font-bold italic text-brand-cream leading-snug">
-                      {est.title || `Estimate #${String(est.id).slice(-6)}`}
-                    </p>
+                    {/* Title — click pencil to edit inline */}
+                    {editingTitle === est.id ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          autoFocus
+                          className="brand-input py-1 text-sm flex-1"
+                          value={titleDraft}
+                          onChange={(e) => setTitleDraft(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") void saveTitle(est.id); if (e.key === "Escape") setEditingTitle(null); }}
+                          placeholder="Estimate title…"
+                        />
+                        <button onClick={() => void saveTitle(est.id)} className="font-sans text-[10px] font-semibold tracking-widest uppercase text-emerald-400 hover:text-emerald-300 transition-colors">Save</button>
+                        <button onClick={() => setEditingTitle(null)} className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-cream transition-colors">Cancel</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 mt-0.5 group/title">
+                        <p className="font-serif text-lg font-bold italic text-brand-cream leading-snug">
+                          {est.title || `Estimate #${String(est.id).slice(-6)}`}
+                        </p>
+                        <button
+                          onClick={() => startEditTitle(est)}
+                          className="opacity-0 group-hover/title:opacity-100 transition-opacity font-sans text-[9px] tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange"
+                          title="Rename"
+                        >
+                          ✎
+                        </button>
+                      </div>
+                    )}
 
                     {/* Project link */}
                     {est.project && (
@@ -279,30 +340,41 @@ export default function EstimatesList() {
                 </div>
 
                 {/* Action links */}
-                <div className="flex flex-wrap items-center gap-4 mt-4 pt-3 border-t border-brand-cream/10">
-                  <a
-                    href={getProposalPdfUrl(est.id)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors"
-                  >
-                    {t("estimatesList.pdfLink")}
-                  </a>
-                  <DownloadPdfButton estimateId={est.id} />
-                  <Link
-                    to={`/proposals/${est.id}`}
-                    className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors"
-                  >
-                    {t("estimatesList.proposalLink")}
-                  </Link>
-                  {est.project && (
-                    <Link
-                      to={`/projects/${est.project.id}`}
+                <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-brand-cream/10">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <a
+                      href={getProposalPdfUrl(est.id)}
+                      target="_blank"
+                      rel="noreferrer"
                       className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors"
                     >
-                      View Project
+                      {t("estimatesList.pdfLink")}
+                    </a>
+                    <DownloadPdfButton estimateId={est.id} />
+                    <Link
+                      to={`/proposals/${est.id}`}
+                      className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors"
+                    >
+                      {t("estimatesList.proposalLink")}
                     </Link>
-                  )}
+                    {est.project && (
+                      <Link
+                        to={`/projects/${est.project.id}`}
+                        className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream-dim hover:text-brand-orange transition-colors"
+                      >
+                        View Project
+                      </Link>
+                    )}
+                  </div>
+                  {/* Delete */}
+                  <button
+                    onClick={() => handleDelete(est.id, est.title ?? "")}
+                    disabled={deleting === est.id}
+                    className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream/30 hover:text-red-400 disabled:opacity-40 transition-colors"
+                    title="Delete estimate"
+                  >
+                    {deleting === est.id ? "Deleting…" : "Delete"}
+                  </button>
                 </div>
               </div>
             );

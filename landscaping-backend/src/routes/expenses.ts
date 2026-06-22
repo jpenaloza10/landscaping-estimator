@@ -222,4 +222,73 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
+/* ------------------------------------------------------
+   PATCH /api/expenses/:id
+   Edit an existing expense (only the owner's project)
+------------------------------------------------------ */
+router.patch("/:id", async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+
+    const existing = await prisma.expense.findFirst({
+      where: { id: req.params.id, project: { user_id: userId } },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: "Expense not found" });
+    }
+
+    const { category, vendor, description, amount, date } = req.body as {
+      category?: string;
+      vendor?: string | null;
+      description?: string | null;
+      amount?: string | number;
+      date?: string;
+    };
+
+    const updated = await prisma.expense.update({
+      where: { id: req.params.id },
+      data: {
+        ...(category !== undefined ? { category: parseCategory(category) } : {}),
+        ...(vendor    !== undefined ? { vendor: vendor || null }      : {}),
+        ...(description !== undefined ? { description: description || null } : {}),
+        ...(amount    !== undefined ? { amount: toNumber(amount, "amount") } : {}),
+        ...(date      !== undefined ? { date: parseISODate(date, "date") } : {}),
+      },
+    });
+
+    return res.json(updated);
+  } catch (e: unknown) {
+    console.error("[expenses.patch/:id]", e);
+    const status = (e as { status?: number })?.status ?? 500;
+    const message = e instanceof Error ? e.message : "Failed to update expense";
+    return res.status(status).json({ error: message });
+  }
+});
+
+/* ------------------------------------------------------
+   DELETE /api/expenses/:id
+   Remove an expense (only the owner's project)
+------------------------------------------------------ */
+router.delete("/:id", async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+
+    const existing = await prisma.expense.findFirst({
+      where: { id: req.params.id, project: { user_id: userId } },
+      select: { id: true },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: "Expense not found" });
+    }
+
+    await prisma.expense.delete({ where: { id: req.params.id } });
+    return res.json({ ok: true });
+  } catch (e: unknown) {
+    console.error("[expenses.delete/:id]", e);
+    const status = (e as { status?: number })?.status ?? 500;
+    const message = e instanceof Error ? e.message : "Failed to delete expense";
+    return res.status(status).json({ error: message });
+  }
+});
+
 export default router;

@@ -311,6 +311,10 @@ export async function updateEstimateTitle(
 /* =========================
    FIXED finalizeEstimate()
    ========================= */
+export async function deleteEstimate(estimateId: string): Promise<{ ok: boolean }> {
+  return api(`/api/estimates/${encodeURIComponent(estimateId)}`, { method: "DELETE" });
+}
+
 export async function finalizeEstimate(estimateId: string): Promise<void> {
   const path = normalizePath(
     `/api/estimates/${encodeURIComponent(estimateId)}/finalize`
@@ -360,6 +364,17 @@ export async function createExpense(input: ExpenseInput) {
     method: "POST",
     body: { ...input, currency: input.currency || "USD" },
   });
+}
+
+export async function deleteExpense(id: string | number): Promise<{ ok: boolean }> {
+  return api(`/api/expenses/${encodeURIComponent(String(id))}`, { method: "DELETE" });
+}
+
+export async function updateExpense(
+  id: string | number,
+  data: { category?: string; vendor?: string; description?: string; amount?: number; date?: string }
+): Promise<Record<string, unknown>> {
+  return api(`/api/expenses/${encodeURIComponent(String(id))}`, { method: "PATCH", body: data });
 }
 
 /* =========================

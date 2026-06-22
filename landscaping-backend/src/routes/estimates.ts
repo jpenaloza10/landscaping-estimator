@@ -394,6 +394,28 @@ r.post("/:id/finalize", async (req: Request, res: Response) => {
   }
 });
 
+// === Delete estimate ===
+r.delete("/:id", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (userId == null) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id } = req.params;
+
+    const existing = await prisma.estimate.findFirst({
+      where: { id, project: { user_id: userId } },
+      select: { id: true },
+    });
+    if (!existing) return res.status(404).json({ error: "Estimate not found" });
+
+    await prisma.estimate.delete({ where: { id } });
+    return res.json({ ok: true });
+  } catch (err: unknown) {
+    console.error("[estimates.delete/:id]", err);
+    return res.status(500).json({ error: "Failed to delete estimate" });
+  }
+});
+
 // helper: kebab-case for fallback material slugs
 function kebab(s: string) {
   return s
