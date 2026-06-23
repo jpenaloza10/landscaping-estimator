@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "../i18n/LanguageContext";
+import LanguageToggle from "../components/LanguageToggle";
 
 type LocationState = {
   from?: { pathname?: string };
@@ -44,7 +45,10 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
+    <div className="relative min-h-[70vh] flex items-center justify-center px-4">
+      <div className="absolute top-4 right-4">
+        <LanguageToggle className="text-brand-cream-dim hover:text-brand-cream" />
+      </div>
       <div className="w-full max-w-sm">
         {/* Heading */}
         <p className="brand-eyebrow text-center mb-2">{t("login.welcomeBack")}</p>
