@@ -234,7 +234,7 @@ r.get("/:id/estimates", async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/projects/:id  — permanently remove a project (cascade deletes estimates, expenses, COs)
+// DELETE /api/projects/:id  — permanently remove a project and all related data
 r.delete("/:id", async (req: Request, res: Response) => {
   try {
     const userId = Number((req as any).user?.id);
@@ -245,11 +245,30 @@ r.delete("/:id", async (req: Request, res: Response) => {
 
     const project = await prisma.project.findFirst({
       where: { id: projectId, user_id: userId },
-      select: { id: true },
+      select: { id: true, estimates: { select: { id: true } } },
     });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    await prisma.project.delete({ where: { id: projectId } });
+    const estimateIds = project.estimates.map((e: { id: string }) => e.id);
+
+    // Delete in dependency order — FK constraints prevent a simple project.delete()
+    await prisma.$transaction([
+      // 1. BudgetSnapshots reference both Project and Estimate
+      prisma.budgetSnapshot.deleteMany({ where: { projectId } }),
+      // 2. Expenses reference Project (and optionally Estimate / EstimateLine)
+      prisma.expense.deleteMany({ where: { projectId } }),
+      // 3. Change orders reference Project (and optionally Estimate)
+      prisma.changeOrder.deleteMany({ where: { projectId } }),
+      // 4. EstimateLines reference Estimate
+      ...(estimateIds.length
+        ? [prisma.estimateLine.deleteMany({ where: { estimateId: { in: estimateIds } } })]
+        : []),
+      // 5. Estimates reference Project
+      prisma.estimate.deleteMany({ where: { projectId } }),
+      // 6. Finally delete the project itself
+      prisma.project.delete({ where: { id: projectId } }),
+    ]);
+
     return res.json({ ok: true });
   } catch (e: unknown) {
     console.error("[projects.delete/:id]", e);
