@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
+import LanguageToggle from "../components/LanguageToggle";
 
 /* ─────────────────────────────────────────────
    LANDING NAV  (preview dropdown + login/signup)
@@ -85,8 +86,9 @@ function LandingNav() {
           Landscaping Estimator
         </Link>
 
-        {/* Right — Login + Get Started */}
+        {/* Right — Language toggle + Login + Get Started */}
         <nav className="hidden md:flex items-center gap-6" aria-label="Auth">
+          <LanguageToggle className="text-brand-green hover:text-brand-orange" />
           <Link to="/login" className={linkCls}>Log In</Link>
           <Link
             to="/signup"
@@ -118,6 +120,7 @@ function LandingNav() {
             <Link to="/demo/estimates" onClick={() => setMobileOpen(false)} className={linkCls}>Estimates</Link>
             <Link to="/demo/expenses"  onClick={() => setMobileOpen(false)} className={linkCls}>Expenses</Link>
             <div className="border-t border-brand-green/10 pt-3 mt-1 flex flex-col gap-3">
+              <LanguageToggle className="text-brand-green hover:text-brand-orange" />
               <Link to="/login"  onClick={() => setMobileOpen(false)} className={linkCls}>Log In</Link>
               <Link to="/signup" onClick={() => setMobileOpen(false)} className={`${linkCls} text-brand-orange`}>Get Started →</Link>
             </div>
