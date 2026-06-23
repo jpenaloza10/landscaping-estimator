@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { authedFetch, ApiError, Project } from "../lib/api";
+import { authedFetch, deleteProject, ApiError, Project } from "../lib/api";
 import { useTranslation } from "../i18n/LanguageContext";
 
 type ProjectsResponse =
@@ -12,9 +12,10 @@ export default function Projects() {
   const navigate = useNavigate();
   const { token, loading } = useAuth();
   const { t } = useTranslation();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects]     = useState<Project[]>([]);
   const [loadingList, setLoadingList] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr]               = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (loading) return;          // wait for auth
@@ -48,6 +49,19 @@ export default function Projects() {
 
     return () => ac.abort();
   }, [token, loading, navigate]);
+
+  async function handleDelete(id: number, name: string) {
+    if (!window.confirm(`Delete "${name}"?\n\nThis will permanently remove the project and all its estimates, expenses, and change orders.`)) return;
+    setDeletingId(id);
+    try {
+      await deleteProject(id);
+      setProjects((prev) => prev.filter((p) => p.id !== id));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to delete project");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const content = useMemo(() => {
     if (loading || loadingList) {
@@ -103,17 +117,27 @@ export default function Projects() {
                 {new Date(p.created_at).toLocaleDateString()}
               </p>
             </div>
-            <Link
-              to={`/projects/${p.id}`}
-              className="btn-brand-outline self-start text-[10px] px-4 py-2"
-            >
-              {t("projects.openProject")}
-            </Link>
+            <div className="flex items-center justify-between gap-3 pt-2 border-t border-brand-cream/10">
+              <Link
+                to={`/projects/${p.id}`}
+                className="btn-brand-outline text-[10px] px-4 py-2"
+              >
+                {t("projects.openProject")}
+              </Link>
+              <button
+                onClick={() => void handleDelete(p.id, p.name)}
+                disabled={deletingId === p.id}
+                className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream/25 hover:text-red-400 disabled:opacity-40 transition-colors"
+                title="Delete project"
+              >
+                {deletingId === p.id ? "Deleting…" : "Delete"}
+              </button>
+            </div>
           </div>
         ))}
       </div>
     );
-  }, [loading, loadingList, err, projects, t]);
+  }, [loading, loadingList, err, projects, t, deletingId, handleDelete]);
 
   return (
     <div>

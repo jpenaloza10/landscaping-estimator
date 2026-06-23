@@ -234,4 +234,27 @@ r.get("/:id/estimates", async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/projects/:id  — permanently remove a project (cascade deletes estimates, expenses, COs)
+r.delete("/:id", async (req: Request, res: Response) => {
+  try {
+    const userId = Number((req as any).user?.id);
+    if (!Number.isFinite(userId)) return res.status(401).json({ error: "Unauthorized" });
+
+    const projectId = Number(req.params.id);
+    if (!Number.isInteger(projectId)) return res.status(400).json({ error: "Invalid project id" });
+
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, user_id: userId },
+      select: { id: true },
+    });
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    await prisma.project.delete({ where: { id: projectId } });
+    return res.json({ ok: true });
+  } catch (e: unknown) {
+    console.error("[projects.delete/:id]", e);
+    return res.status(500).json({ error: "Failed to delete project" });
+  }
+});
+
 export default r;

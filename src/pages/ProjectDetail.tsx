@@ -9,6 +9,7 @@ import {
   createChangeOrder,
   approveChangeOrder,
   rejectChangeOrder,
+  deleteProject,
   ApiError,
   type Project,
   type EstimateStatus,
@@ -135,6 +136,17 @@ export default function ProjectDetail() {
     }
   }
 
+  async function handleDeleteProject() {
+    if (!project) return;
+    if (!window.confirm(`Delete "${project.name}"?\n\nThis will permanently remove the project and all its estimates, expenses, and change orders.`)) return;
+    try {
+      await deleteProject(project.id);
+      navigate("/projects", { replace: true });
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to delete project");
+    }
+  }
+
   async function handleCreateCo(e: React.FormEvent) {
     e.preventDefault();
     if (!project || !coTitle.trim() || !coAmount) return;
@@ -206,9 +218,18 @@ export default function ProjectDetail() {
             {project.location && <p className="font-sans text-sm text-brand-cream-dim mt-1">{project.location}</p>}
             {project.description && <p className="font-sans text-xs text-brand-cream-dim/70 mt-2 leading-relaxed max-w-lg">{project.description}</p>}
           </div>
-          <Link to={`/estimate?projectId=${project.id}`} className="btn-brand-primary shrink-0">
-            {t("projectDetail.newEstimate")}
-          </Link>
+          <div className="flex items-center gap-3 shrink-0">
+            <Link to={`/estimate?projectId=${project.id}`} className="btn-brand-primary">
+              {t("projectDetail.newEstimate")}
+            </Link>
+            <button
+              onClick={() => void handleDeleteProject()}
+              className="font-sans text-[10px] font-semibold tracking-widest uppercase text-brand-cream/30 hover:text-red-400 transition-colors border border-brand-cream/15 hover:border-red-400/40 px-3 py-2"
+              title="Delete project"
+            >
+              Delete Project
+            </button>
+          </div>
         </div>
       </div>
 

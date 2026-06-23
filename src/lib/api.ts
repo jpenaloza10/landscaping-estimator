@@ -198,6 +198,10 @@ export async function createProject(input: {
   return project;
 }
 
+export async function deleteProject(id: number): Promise<{ ok: boolean }> {
+  return api(`/api/projects/${id}`, { method: "DELETE" });
+}
+
 /* =========================
    Dashboard
    ========================= */
