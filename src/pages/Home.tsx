@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import LanguageToggle from "../components/LanguageToggle";
+import { useTranslation } from "../i18n/LanguageContext";
 
 /* ─────────────────────────────────────────────
    LANDING NAV  (preview dropdown + login/signup)
@@ -9,6 +10,7 @@ function LandingNav() {
   const [dropOpen, setDropOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -24,6 +26,12 @@ function LandingNav() {
   const linkCls =
     "font-sans text-[11px] font-semibold tracking-[0.18em] uppercase transition-colors text-brand-green hover:text-brand-orange";
 
+  const previewLinks = [
+    { label: t("home.previewProjects"),  to: "/demo/projects",  icon: FolderIcon },
+    { label: t("home.previewEstimates"), to: "/demo/estimates", icon: CalcIcon },
+    { label: t("home.previewExpenses"),  to: "/demo/expenses",  icon: WalletIcon },
+  ];
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-brand-cream border-b border-brand-green/10">
       <div className="mx-auto max-w-7xl px-4 sm:px-8 h-[60px] flex items-center justify-between">
@@ -37,7 +45,7 @@ function LandingNav() {
               aria-haspopup="true"
               aria-expanded={dropOpen}
             >
-              Preview
+              {t("home.previewMenu")}
               <svg
                 width="10" height="10" viewBox="0 0 10 10" fill="none"
                 className={`transition-transform ${dropOpen ? "rotate-180" : ""}`}
@@ -51,14 +59,10 @@ function LandingNav() {
               <div className="absolute top-full left-0 mt-2 w-52 bg-brand-cream border border-brand-green/10 shadow-lg rounded-sm overflow-hidden">
                 <div className="px-3 py-2 border-b border-brand-green/10">
                   <p className="font-sans text-[9px] font-semibold tracking-[0.22em] uppercase text-brand-orange">
-                    Sample Pages
+                    {t("home.previewSamplePages")}
                   </p>
                 </div>
-                {[
-                  { label: "Projects",  to: "/demo/projects",  icon: FolderIcon },
-                  { label: "Estimates", to: "/demo/estimates", icon: CalcIcon },
-                  { label: "Expenses",  to: "/demo/expenses",  icon: WalletIcon },
-                ].map(({ label, to, icon: Icon }) => (
+                {previewLinks.map(({ label, to, icon: Icon }) => (
                   <Link
                     key={to}
                     to={to}
@@ -89,12 +93,12 @@ function LandingNav() {
         {/* Right — Language toggle + Login + Get Started */}
         <nav className="hidden md:flex items-center gap-6" aria-label="Auth">
           <LanguageToggle className="text-brand-green hover:text-brand-orange" />
-          <Link to="/login" className={linkCls}>Log In</Link>
+          <Link to="/login" className={linkCls}>{t("home.navLogIn")}</Link>
           <Link
             to="/signup"
             className="font-sans text-[11px] font-semibold tracking-[0.18em] uppercase bg-brand-orange text-brand-cream px-5 py-2.5 border-2 border-brand-orange transition-all hover:bg-transparent hover:text-brand-orange"
           >
-            Get Started
+            {t("home.navGetStarted")}
           </Link>
         </nav>
 
@@ -115,14 +119,16 @@ function LandingNav() {
       {mobileOpen && (
         <div className="md:hidden border-t border-brand-green/10 bg-brand-cream">
           <nav className="px-4 py-4 flex flex-col gap-3">
-            <p className="font-sans text-[9px] font-semibold tracking-[0.22em] uppercase text-brand-orange pt-1">Preview</p>
-            <Link to="/demo/projects"  onClick={() => setMobileOpen(false)} className={linkCls}>Projects</Link>
-            <Link to="/demo/estimates" onClick={() => setMobileOpen(false)} className={linkCls}>Estimates</Link>
-            <Link to="/demo/expenses"  onClick={() => setMobileOpen(false)} className={linkCls}>Expenses</Link>
+            <p className="font-sans text-[9px] font-semibold tracking-[0.22em] uppercase text-brand-orange pt-1">
+              {t("home.previewMenu")}
+            </p>
+            <Link to="/demo/projects"  onClick={() => setMobileOpen(false)} className={linkCls}>{t("home.previewProjects")}</Link>
+            <Link to="/demo/estimates" onClick={() => setMobileOpen(false)} className={linkCls}>{t("home.previewEstimates")}</Link>
+            <Link to="/demo/expenses"  onClick={() => setMobileOpen(false)} className={linkCls}>{t("home.previewExpenses")}</Link>
             <div className="border-t border-brand-green/10 pt-3 mt-1 flex flex-col gap-3">
               <LanguageToggle className="text-brand-green hover:text-brand-orange" />
-              <Link to="/login"  onClick={() => setMobileOpen(false)} className={linkCls}>Log In</Link>
-              <Link to="/signup" onClick={() => setMobileOpen(false)} className={`${linkCls} text-brand-orange`}>Get Started →</Link>
+              <Link to="/login"  onClick={() => setMobileOpen(false)} className={linkCls}>{t("home.navLogIn")}</Link>
+              <Link to="/signup" onClick={() => setMobileOpen(false)} className={`${linkCls} text-brand-orange`}>{t("home.navGetStartedArrow")}</Link>
             </div>
           </nav>
         </div>
@@ -135,6 +141,15 @@ function LandingNav() {
    HOME PAGE
 ───────────────────────────────────────────── */
 export default function Home() {
+  const { t } = useTranslation();
+
+  const features = [
+    { title: t("home.feature1Title"), desc: t("home.feature1Desc"), Icon: ClipboardIcon },
+    { title: t("home.feature2Title"), desc: t("home.feature2Desc"), Icon: ClockIcon },
+    { title: t("home.feature3Title"), desc: t("home.feature3Desc"), Icon: PencilIcon },
+    { title: t("home.feature4Title"), desc: t("home.feature4Desc"), Icon: PulseIcon },
+  ];
+
   return (
     <div className="min-h-screen bg-brand-green text-brand-cream antialiased font-sans" style={{ backgroundColor: "#1B3A1E", color: "#F4EFE4" }}>
       <LandingNav />
@@ -183,10 +198,10 @@ export default function Home() {
               aria-hidden="true"
             />
             <p className="font-sans text-[10px] font-semibold tracking-[0.22em] uppercase text-brand-orange mb-0.5">
-              Build Your
+              {t("home.heroBadgeTop")}
             </p>
             <p className="font-script text-3xl text-brand-cream leading-tight">
-              perfect estimate
+              {t("home.heroBadgeScript")}
             </p>
           </div>
 
@@ -196,13 +211,13 @@ export default function Home() {
               to="/signup"
               className="font-sans text-[11px] font-bold tracking-[0.2em] uppercase text-brand-green bg-brand-cream border-2 border-brand-cream px-9 py-4 transition-all hover:bg-transparent hover:text-brand-cream"
             >
-              Get Started
+              {t("home.ctaGetStarted")}
             </Link>
             <a
               href="#features"
               className="font-sans text-[11px] font-bold tracking-[0.2em] uppercase text-brand-cream bg-transparent border-2 border-brand-cream px-9 py-4 transition-all hover:bg-brand-cream hover:text-brand-green"
             >
-              See How It Works
+              {t("home.ctaSeeHow")}
             </a>
           </div>
         </div>
@@ -225,16 +240,16 @@ export default function Home() {
       {/* ── FEATURES ── */}
       <section id="features" className="bg-brand-cream py-20 px-6">
         <div className="max-w-5xl mx-auto">
-          <p className="brand-eyebrow text-center mb-3">Everything you need</p>
+          <p className="brand-eyebrow text-center mb-3">{t("home.featuresEyebrow")}</p>
           <h2
             className="font-serif font-black italic text-brand-green text-center mb-14"
             style={{ fontSize: "clamp(32px, 4vw, 52px)" }}
           >
-            Built for the field
+            {t("home.featuresHeading")}
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
-            {FEATURES.map((f) => (
+            {features.map((f) => (
               <div key={f.title} className="text-center">
                 <div className="w-13 h-13 mx-auto mb-4 bg-brand-green rounded-full flex items-center justify-center" style={{width:52,height:52}}>
                   <f.Icon className="w-6 h-6 text-brand-cream" />
@@ -249,28 +264,28 @@ export default function Home() {
 
       {/* ── SAMPLE SECTIONS ── */}
       <SampleSection
-        eyebrow="Projects"
-        heading="Organize every job"
-        body="Keep all your active and completed landscaping jobs in one place. Each project holds its own estimates, expenses, and proposal PDFs — no more hunting through folders."
-        cta="View sample projects"
+        eyebrow={t("home.previewProjects")}
+        heading={t("home.sampleHeadingProjects")}
+        body={t("home.sampleBodyProjects")}
+        cta={t("home.sampleCtaProjects")}
         ctaTo="/demo/projects"
         preview={<ProjectsPreview />}
         flipped={false}
       />
       <SampleSection
-        eyebrow="Estimates"
-        heading="Instant cost breakdowns"
-        body="Pick an assembly, enter square footage and your ZIP code — labor rates and material costs are applied automatically. Download a client-ready PDF with one click."
-        cta="View sample estimates"
+        eyebrow={t("home.previewEstimates")}
+        heading={t("home.sampleHeadingEstimates")}
+        body={t("home.sampleBodyEstimates")}
+        cta={t("home.sampleCtaEstimates")}
         ctaTo="/demo/estimates"
         preview={<EstimatesPreview />}
         flipped={true}
       />
       <SampleSection
-        eyebrow="Expenses"
-        heading="Track every dollar"
-        body="Log receipts against any project and watch your budget utilisation update in real time. Spot overruns before they become problems."
-        cta="View sample expenses"
+        eyebrow={t("home.previewExpenses")}
+        heading={t("home.sampleHeadingExpenses")}
+        body={t("home.sampleBodyExpenses")}
+        cta={t("home.sampleCtaExpenses")}
         ctaTo="/demo/expenses"
         preview={<ExpensesPreview />}
         flipped={false}
@@ -278,28 +293,28 @@ export default function Home() {
 
       {/* ── FINAL CTA ── */}
       <section className="bg-brand-green-mid py-20 px-6 text-center">
-        <p className="brand-eyebrow mb-3">Ready to start?</p>
+        <p className="brand-eyebrow mb-3">{t("home.ctaBottomEyebrow")}</p>
         <h2
           className="font-serif font-black italic text-brand-cream mb-6"
           style={{ fontSize: "clamp(32px, 4vw, 48px)" }}
         >
-          Your first estimate is free
+          {t("home.ctaBottomTitle")}
         </h2>
         <p className="font-sans text-sm text-brand-cream-dim max-w-md mx-auto mb-10 leading-relaxed">
-          Create an account in seconds and start building professional landscaping estimates today. No credit card required.
+          {t("home.ctaBottomSub")}
         </p>
         <div className="flex gap-4 justify-center flex-wrap">
           <Link
             to="/signup"
             className="font-sans text-[11px] font-bold tracking-[0.2em] uppercase text-brand-green bg-brand-cream border-2 border-brand-cream px-10 py-4 transition-all hover:bg-transparent hover:text-brand-cream"
           >
-            Create Free Account
+            {t("home.ctaCreateAccount")}
           </Link>
           <Link
             to="/login"
             className="font-sans text-[11px] font-bold tracking-[0.2em] uppercase text-brand-cream bg-transparent border-2 border-brand-cream px-10 py-4 transition-all hover:bg-brand-cream hover:text-brand-green"
           >
-            Sign In
+            {t("home.ctaSignIn")}
           </Link>
         </div>
       </section>
@@ -308,7 +323,7 @@ export default function Home() {
       <footer className="bg-brand-green-dark border-t border-brand-cream/10 py-8 px-8 flex flex-wrap items-center justify-between gap-4">
         <span className="font-serif text-base italic font-bold text-brand-cream">Landscaping Estimator</span>
         <span className="font-sans text-[11px] tracking-widest uppercase text-brand-cream-dim opacity-50">
-          © {new Date().getFullYear()} · All rights reserved
+          {t("footer.rights", { year: new Date().getFullYear() })}
         </span>
       </footer>
     </div>
@@ -447,32 +462,6 @@ function ExpensesPreview() {
     </div>
   );
 }
-
-/* ─────────────────────────────────────────────
-   FEATURES DATA
-───────────────────────────────────────────── */
-const FEATURES = [
-  {
-    title: "Instant Estimates",
-    desc:  "Select an assembly, enter square footage, and get a fully itemised cost breakdown in seconds.",
-    Icon:  ClipboardIcon,
-  },
-  {
-    title: "Live Pricing",
-    desc:  "Regional labor rates and material costs applied automatically based on your ZIP code.",
-    Icon:  ClockIcon,
-  },
-  {
-    title: "Proposal PDFs",
-    desc:  "Generate client-ready proposal documents with one click, straight from any estimate.",
-    Icon:  PencilIcon,
-  },
-  {
-    title: "Budget Tracking",
-    desc:  "Log expenses against projects and watch your gross profit update in real time.",
-    Icon:  PulseIcon,
-  },
-];
 
 /* ─────────────────────────────────────────────
    INLINE SVG ICONS
