@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "../i18n/LanguageContext";
+import LanguageToggle from "../components/LanguageToggle";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -51,7 +52,10 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
+    <div className="relative min-h-[70vh] flex items-center justify-center px-4">
+      <div className="absolute top-4 right-4">
+        <LanguageToggle className="text-brand-cream-dim hover:text-brand-cream" />
+      </div>
       <div className="w-full max-w-sm">
         <p className="brand-eyebrow text-center mb-2">{t("signup.getStarted")}</p>
         <h1 className="font-serif text-4xl font-black italic text-brand-cream text-center mb-8">
