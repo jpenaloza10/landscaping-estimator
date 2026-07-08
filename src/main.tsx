@@ -1,40 +1,48 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import "./index.css";
 
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Projects from "./pages/Projects";
-import SignUp from "./pages/SignUp";
+// Home stays eagerly loaded — it's the landing page and must render instantly.
 import Home from "./pages/Home";
-import Account from "./pages/Account";
 
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { LanguageProvider } from "./i18n/LanguageContext";
 import { RequireAuth } from "./auth/RequireAuth";
 
-import AppLayout from "./layouts/AppLayout";
-import ProjectWizard from "./pages/ProjectWizard";
-import ProjectDetail from "./pages/ProjectDetail";
+// Everything else is lazy-loaded: each page becomes its own chunk,
+// fetched only when the user navigates to it. This keeps the landing
+// page bundle small and fast.
+const Login          = lazy(() => import("./pages/Login"));
+const SignUp         = lazy(() => import("./pages/SignUp"));
+const Dashboard      = lazy(() => import("./pages/Dashboard"));
+const Projects       = lazy(() => import("./pages/Projects"));
+const Account        = lazy(() => import("./pages/Account"));
+const AppLayout      = lazy(() => import("./layouts/AppLayout"));
+const ProjectWizard  = lazy(() => import("./pages/ProjectWizard"));
+const ProjectDetail  = lazy(() => import("./pages/ProjectDetail"));
 
 // Sprint 2 pages
-import EstimateWizard from "./pages/EstimateWizard";
-import EstimatesList  from "./pages/EstimatesList";
-import Assemblies from "./pages/Assemblies";
-import Categories from "./pages/Categories";
-import Pricing from "./pages/Pricing";
-import Expenses from "./pages/Expenses";
-import ProposalViewer from "./pages/ProposalViewer";
+const EstimateWizard = lazy(() => import("./pages/EstimateWizard"));
+const EstimatesList  = lazy(() => import("./pages/EstimatesList"));
+const Assemblies     = lazy(() => import("./pages/Assemblies"));
+const Categories     = lazy(() => import("./pages/Categories"));
+const Pricing        = lazy(() => import("./pages/Pricing"));
+const Expenses       = lazy(() => import("./pages/Expenses"));
+const ProposalViewer = lazy(() => import("./pages/ProposalViewer"));
 
 // Demo / sample pages (public — no auth required)
-import SampleProjects  from "./pages/demo/SampleProjects";
-import SampleEstimates from "./pages/demo/SampleEstimates";
-import SampleExpenses  from "./pages/demo/SampleExpenses";
+const SampleProjects  = lazy(() => import("./pages/demo/SampleProjects"));
+const SampleEstimates = lazy(() => import("./pages/demo/SampleEstimates"));
+const SampleExpenses  = lazy(() => import("./pages/demo/SampleExpenses"));
+
+function PageFallback() {
+  return <div style={{ padding: 16 }}>Loading…</div>;
+}
 
 export function PublicLogin() {
   const { user, loading } = useAuth();
-  if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
+  if (loading) return <PageFallback />;
   return user ? <Navigate to="/projects" replace /> : <Home />;
 }
 
@@ -82,7 +90,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <LanguageProvider>
       <AuthProvider>
-        <RouterProvider router={router} />
+        <Suspense fallback={<PageFallback />}>
+          <RouterProvider router={router} />
+        </Suspense>
       </AuthProvider>
     </LanguageProvider>
   </React.StrictMode>

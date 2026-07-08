@@ -11,11 +11,21 @@ export default defineConfig({
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
-        manualChunks: {
-          // React runtime — tiny, changes rarely → long cache lifetime
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          // Supabase client — large (~400 kB), almost never changes
-          'vendor-supabase': ['@supabase/supabase-js'],
+        // Function form so ALL entries of a package (e.g. react-dom/client)
+        // land in the right vendor chunk. Vendor chunks change rarely →
+        // long browser-cache lifetime across deploys.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('@supabase')) return 'vendor-supabase'
+          if (
+            id.includes('/react-dom/') ||
+            id.includes('/react/') ||
+            id.includes('/react-router') ||
+            id.includes('/scheduler/')
+          ) {
+            return 'vendor-react'
+          }
+          return 'vendor'
         },
       },
     },
