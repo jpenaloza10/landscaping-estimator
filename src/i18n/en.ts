@@ -301,6 +301,18 @@ export const en = {
     signOut: "Sign Out",
     updateFailed: "Update failed",
     changeFailed: "Password change failed",
+    logoSection: "Company Logo",
+    logoHint: "PNG or JPEG, max 2 MB. Your logo appears in the header of every PDF estimate you send.",
+    noLogo: "No logo",
+    uploadLogo: "Upload Logo",
+    replaceLogo: "Replace Logo",
+    removeLogo: "Remove",
+    logoUploading: "Uploading…",
+    logoUpdated: "Logo updated. It will appear on your PDF estimates.",
+    logoRemoved: "Logo removed.",
+    logoTooLarge: "Logo must be under 2 MB.",
+    logoWrongType: "Logo must be a PNG or JPEG image.",
+    logoUploadFailed: "Logo upload failed",
   },
 
   aiAssistant: {

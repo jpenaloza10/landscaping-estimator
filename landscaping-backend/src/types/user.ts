@@ -5,6 +5,7 @@ export type SafeUser = {
     id: number;
     name: string;
     email: string;
+    logo_path?: string | null;
 };
 
 export type User = PrismaUser;

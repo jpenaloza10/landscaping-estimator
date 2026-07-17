@@ -341,6 +341,56 @@ export async function downloadProposalPdf(estimateId: string): Promise<Blob> {
 }
 
 /* =========================
+   Company Logo
+   ========================= */
+export interface LogoSignResponse {
+  signedUrl: string;
+  token: string;
+  path: string;
+  expiresIn: number;
+}
+
+export interface LogoInfo {
+  logo_path: string | null;
+  url: string | null;
+}
+
+export async function signLogoUpload(
+  filename: string,
+  mimeType: string
+): Promise<LogoSignResponse> {
+  return api<LogoSignResponse>("/api/uploads/logo-sign", {
+    method: "POST",
+    body: { filename, mime_type: mimeType },
+  });
+}
+
+/** PUT the file straight to Supabase storage via the signed URL. */
+export async function uploadLogoFile(signedUrl: string, file: File): Promise<void> {
+  const res = await fetch(signedUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type, "x-upsert": "true" },
+    body: file,
+  });
+  if (!res.ok) throw new ApiError(`Logo upload failed (HTTP ${res.status})`, res.status);
+}
+
+export async function commitLogo(path: string): Promise<LogoInfo> {
+  return api<LogoInfo>("/api/uploads/logo-commit", {
+    method: "POST",
+    body: { path },
+  });
+}
+
+export async function getLogo(): Promise<LogoInfo> {
+  return api<LogoInfo>("/api/uploads/logo");
+}
+
+export async function deleteLogo(): Promise<void> {
+  await api("/api/uploads/logo", { method: "DELETE" });
+}
+
+/* =========================
    Expenses + Budget
    ========================= */
 export async function getBudgetReport(projectId: number) {

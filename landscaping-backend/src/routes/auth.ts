@@ -49,7 +49,7 @@ r.post("/signup", authRateLimit, async (req: Request, res: Response) => {
 
     const created = await prisma.user.create({
       data: { name, email, password_hash: await bcrypt.hash(password, 10) },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, logo_path: true },
     });
 
     const token = signToken({ userId: created.id, email: created.email });
@@ -82,7 +82,7 @@ r.post("/login", authRateLimit, async (req: Request, res: Response) => {
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
     const token = signToken({ userId: userFull.id, email: userFull.email });
-    const user: SafeUser = { id: userFull.id, name: userFull.name, email: userFull.email };
+    const user: SafeUser = { id: userFull.id, name: userFull.name, email: userFull.email, logo_path: userFull.logo_path };
 
     return res.json({ token, user });
   } catch (e: unknown) {
@@ -107,7 +107,7 @@ r.patch("/profile", authMiddleware, async (req: Request, res: Response) => {
     const user = await prisma.user.update({
       where: { id: userId },
       data: { name: parsed.data.name.trim() },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, logo_path: true },
     });
     return res.json({ user });
   } catch (e: unknown) {
@@ -162,7 +162,7 @@ r.get("/me", authMiddleware, async (req: Request, res: Response) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, logo_path: true },
     });
 
     if (!user) return res.status(404).json({ error: "User not found" });

@@ -2,59 +2,97 @@ import { Router } from "express";
 import PDFDocument from "pdfkit";
 import { prisma } from "../prisma";
 import { callAI } from "../services/aiClient";
+import { supabaseAdmin } from "../lib/supabase";
 
 const r = Router();
 
+const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || "project-uploads";
+
+/** Download the owner's company logo from storage. Non-fatal on any failure. */
+async function fetchLogoBuffer(logoPath: string | null | undefined): Promise<Buffer | null> {
+  if (!logoPath) return null;
+  try {
+    const { data, error } = await supabaseAdmin.storage
+      .from(SUPABASE_BUCKET)
+      .download(logoPath);
+    if (error || !data) return null;
+    return Buffer.from(await data.arrayBuffer());
+  } catch (err) {
+    console.warn("[proposals] logo download failed:", err);
+    return null;
+  }
+}
+
+/** Generate the AI proposal narrative. Non-fatal on any failure. */
+async function fetchNarrative(est: {
+  id: string;
+  projectId: number;
+  location: unknown;
+  subtotal: unknown;
+  tax: unknown;
+  total: unknown;
+  lines: { id: string; assemblyId: string; lineTotal: unknown; items: unknown }[];
+}): Promise<string | null> {
+  try {
+    const prompt = [
+      "You are an assistant for a landscaping construction estimating app.",
+      "Write a clear, client-facing proposal summary for this estimate.",
+      "",
+      "Goals:",
+      "- Explain the scope of work in plain language.",
+      "- Emphasize professionalism and quality.",
+      "- Avoid quoting line-item prices individually; focus on value and scope.",
+      "- Do NOT invent legal terms or guarantees.",
+      "",
+      "Here is the estimate data in JSON form:",
+      JSON.stringify(
+        {
+          id: est.id,
+          projectId: est.projectId,
+          location: est.location,
+          subtotal: est.subtotal,
+          tax: est.tax,
+          total: est.total,
+          lines: est.lines.map((l) => ({
+            id: l.id,
+            assemblyId: l.assemblyId,
+            lineTotal: l.lineTotal,
+            items: l.items,
+          })),
+        },
+        null,
+        2
+      ),
+    ].join("\n");
+    return await callAI(prompt);
+  } catch (err) {
+    console.error("[proposals] AI narrative failed:", err);
+    return null;
+  }
+}
+
 r.get("/:estimateId.pdf", async (req, res) => {
   try {
+    // One round-trip: estimate + lines + owner's logo path via project → user
     const est = await prisma.estimate.findUnique({
       where: { id: req.params.estimateId },
-      include: { lines: true },
+      include: {
+        lines: true,
+        project: {
+          select: { user: { select: { logo_path: true } } },
+        },
+      },
     });
 
     if (!est) {
       return res.status(404).send("Not found");
     }
 
-    // Try to generate an AI proposal narrative (non-fatal if it fails)
-    let narrative: string | null = null;
-    try {
-      const prompt = [
-        "You are an assistant for a landscaping construction estimating app.",
-        "Write a clear, client-facing proposal summary for this estimate.",
-        "",
-        "Goals:",
-        "- Explain the scope of work in plain language.",
-        "- Emphasize professionalism and quality.",
-        "- Avoid quoting line-item prices individually; focus on value and scope.",
-        "- Do NOT invent legal terms or guarantees.",
-        "",
-        "Here is the estimate data in JSON form:",
-        JSON.stringify(
-          {
-            id: est.id,
-            projectId: est.projectId,
-            location: est.location,
-            subtotal: est.subtotal,
-            tax: est.tax,
-            total: est.total,
-            lines: est.lines.map((l) => ({
-              id: l.id,
-              assemblyId: l.assemblyId,
-              lineTotal: l.lineTotal,
-              items: l.items,
-            })),
-          },
-          null,
-          2
-        ),
-      ].join("\n");
-
-      narrative = await callAI(prompt);
-    } catch (err) {
-      console.error("[proposals] AI narrative failed:", err);
-      narrative = null; 
-    }
+    // Narrative + logo are independent — fetch them concurrently
+    const [narrative, logoBuf] = await Promise.all([
+      fetchNarrative(est),
+      fetchLogoBuffer(est.project?.user?.logo_path),
+    ]);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -65,8 +103,18 @@ r.get("/:estimateId.pdf", async (req, res) => {
     const doc = new PDFDocument({ margin: 48 });
     doc.pipe(res);
 
-    // Header
-    doc.fontSize(18).text("Estimate", { align: "right" });
+    // Header — company logo (left) + title (right)
+    if (logoBuf) {
+      try {
+        doc.image(logoBuf, 48, 44, { fit: [160, 64] });
+      } catch (err) {
+        console.warn("[proposals] logo embed failed:", err);
+      }
+    }
+    doc.fontSize(18).text("Estimate", 48, 48, { align: "right" });
+    doc.y = logoBuf ? 120 : doc.y;
+    doc.x = 48;
+
     doc
       .moveDown()
       .fontSize(12)

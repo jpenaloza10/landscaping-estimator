@@ -303,6 +303,18 @@ export const es: Translations = {
     signOut: "Cerrar sesión",
     updateFailed: "Error al actualizar",
     changeFailed: "Error al cambiar la contraseña",
+    logoSection: "Logotipo de la empresa",
+    logoHint: "PNG o JPEG, máx. 2 MB. Tu logotipo aparece en el encabezado de cada estimación en PDF que envíes.",
+    noLogo: "Sin logotipo",
+    uploadLogo: "Subir logotipo",
+    replaceLogo: "Reemplazar logotipo",
+    removeLogo: "Eliminar",
+    logoUploading: "Subiendo…",
+    logoUpdated: "Logotipo actualizado. Aparecerá en tus estimaciones en PDF.",
+    logoRemoved: "Logotipo eliminado.",
+    logoTooLarge: "El logotipo debe pesar menos de 2 MB.",
+    logoWrongType: "El logotipo debe ser una imagen PNG o JPEG.",
+    logoUploadFailed: "Error al subir el logotipo",
   },
 
   aiAssistant: {

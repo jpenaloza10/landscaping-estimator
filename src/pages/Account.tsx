@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api } from "../lib/api";
 import { useTranslation } from "../i18n/LanguageContext";
+import LogoUpload from "../components/LogoUpload";
 
 export default function Account() {
   const { t } = useTranslation();
@@ -129,6 +130,12 @@ export default function Account() {
             )}
           </div>
         </form>
+      </div>
+
+      {/* ── Company logo ── */}
+      <div className="brand-card">
+        <p className="brand-eyebrow mb-4">{t("account.logoSection")}</p>
+        <LogoUpload />
       </div>
 
       {/* ── Change password ── */}

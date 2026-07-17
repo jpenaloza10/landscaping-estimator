@@ -15,6 +15,7 @@ model User {
   password_hash   String
   updated_at      DateTime      @updatedAt
   id              Int           @id @default(autoincrement())
+  logo_path       String? // storage path of company logo, e.g. "logos/12/1719000000000.png"
   projects        Project[]
   createdExpenses Expense[]     @relation("UserExpenseCreated")
   userPricing     UserPricing[]
