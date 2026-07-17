@@ -10,6 +10,7 @@ import React,
 import {
   loginRequest,
   registerRequest,
+  meRequest,
   setAuthToken,
   type SafeUser,
 } from "../lib/api";
@@ -45,11 +46,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const storedToken = localStorage.getItem("authToken");
     const storedUser = localStorage.getItem("authUser");
 
-    if (storedToken) {
-      setTokenState(storedToken);
-      setAuthToken(storedToken);
+    if (!storedToken) {
+      setLoading(false);
+      return;
     }
 
+    setTokenState(storedToken);
+    setAuthToken(storedToken);
+
+    // Optimistically restore the cached user for instant paint…
     if (storedUser) {
       try {
         setUserState(JSON.parse(storedUser));
@@ -58,7 +63,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    setLoading(false);
+    // …then validate the token against the server. An expired/invalid
+    // token 401s, which clears the session and redirects to /login
+    // (handled centrally in lib/api.ts).
+    meRequest()
+      .then(({ user }) => {
+        setUserState(user);
+        localStorage.setItem("authUser", JSON.stringify(user));
+      })
+      .catch(() => {
+        // 401 already handled by api.ts; ignore transient network errors
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   /* =========================

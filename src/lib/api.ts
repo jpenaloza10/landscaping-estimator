@@ -55,6 +55,26 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 }
 
 /* =========================
+   401 handling — expired/invalid session
+   ========================= */
+// Endpoints where a 401 is a normal response (bad credentials), not a dead session
+const AUTH_401_WHITELIST = [
+  "/api/auth/login",
+  "/api/auth/signup",
+  "/api/auth/change-password",
+];
+
+function handleUnauthorized(path: string) {
+  if (AUTH_401_WHITELIST.some((p) => path.startsWith(p))) return;
+  // Token is expired or invalid — clear the dead session and send to login
+  setAuthToken(null);
+  localStorage.removeItem("authUser");
+  if (window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
+}
+
+/* =========================
    Core JSON Fetch Wrapper
    ========================= */
 export async function api<T = unknown>(
@@ -99,6 +119,8 @@ export async function api<T = unknown>(
     : await res.text().catch(() => "");
 
   if (!res.ok) {
+    if (res.status === 401) handleUnauthorized(cleanPath);
+
     const msg =
       (isJson && (payload as any)?.error) ||
       (typeof payload === "string" && payload.trim()) ||
@@ -135,6 +157,8 @@ export async function apiRaw(
   });
 
   if (!res.ok) {
+    if (res.status === 401) handleUnauthorized(cleanPath);
+
     let message = `HTTP ${res.status}`;
     try {
       const maybeJson = await res.clone().json();
@@ -149,7 +173,16 @@ export async function apiRaw(
 /* =========================
    Auth
    ========================= */
-export type SafeUser = { id: string | number; name: string; email: string };
+export type SafeUser = {
+  id: string | number;
+  name: string;
+  email: string;
+  logo_path?: string | null;
+};
+
+export async function meRequest(): Promise<{ user: SafeUser }> {
+  return api("/api/auth/me");
+}
 
 export async function loginRequest(
   email: string,
