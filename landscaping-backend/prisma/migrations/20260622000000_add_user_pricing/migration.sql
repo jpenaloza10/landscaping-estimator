@@ -21,10 +21,19 @@ CREATE INDEX IF NOT EXISTS "UserPricing_userId_idx"
     ON "UserPricing"("userId");
 
 -- AddForeignKey
-ALTER TABLE "UserPricing"
-    ADD CONSTRAINT "UserPricing_userId_fkey"
-    FOREIGN KEY ("userId") REFERENCES "User"("id")
-    ON DELETE CASCADE ON UPDATE CASCADE;
+-- Postgres has no ADD CONSTRAINT IF NOT EXISTS, so guard it: the constraint
+-- already exists where the table was created by an earlier `prisma db push`.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'UserPricing_userId_fkey'
+    ) THEN
+        ALTER TABLE "UserPricing"
+            ADD CONSTRAINT "UserPricing_userId_fkey"
+            FOREIGN KEY ("userId") REFERENCES "User"("id")
+            ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- Also seed default assemblies if the Assembly table is empty
 -- Run this separately if you want the default categories populated:
