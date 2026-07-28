@@ -41,6 +41,7 @@ export const en = {
     expenses: "Expenses",
     categories: "Categories",
     pricing: "Price Sheet",
+    account: "Account",
     signOut: "Sign Out",
     signingOut: "Signing out…",
   },

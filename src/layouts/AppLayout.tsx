@@ -130,15 +130,17 @@ export default function AppLayout() {
           <div className="hidden md:flex items-center gap-5">
             <LanguageToggle className="text-brand-green hover:text-brand-orange border border-brand-green/20 px-2 py-1 hover:border-brand-orange" />
 
-            {/* Avatar initials */}
-            <div
-              className="w-7 h-7 rounded-full bg-brand-green flex items-center justify-center"
-              title={displayName}
+            {/* Avatar initials — links to Account settings */}
+            <Link
+              to="/account"
+              className="w-7 h-7 rounded-full bg-brand-green flex items-center justify-center hover:bg-brand-orange transition-colors"
+              title={t("nav.account")}
+              aria-label={t("nav.account")}
             >
               <span className="font-sans text-[10px] font-bold text-brand-cream">
                 {initials}
               </span>
-            </div>
+            </Link>
 
             <button
               onClick={handleSignOut}
@@ -185,6 +187,17 @@ export default function AppLayout() {
                   {label}
                 </NavLink>
               ))}
+              <NavLink
+                to="/account"
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  `font-sans text-[11px] font-semibold tracking-[0.18em] uppercase py-2.5 border-b border-brand-green/8 transition-colors ${
+                    isActive ? "text-brand-orange" : "text-brand-green hover:text-brand-orange"
+                  }`
+                }
+              >
+                {t("nav.account")}
+              </NavLink>
               <div className="pt-4 mt-2 border-t border-brand-green/10 flex items-center justify-between">
                 <p className="font-sans text-[10px] tracking-widest uppercase text-brand-green/50 truncate max-w-[180px]">
                   {displayName}

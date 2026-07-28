@@ -43,6 +43,7 @@ export const es: Translations = {
     expenses: "Gastos",
     categories: "Categorías",
     pricing: "Hoja de precios",
+    account: "Cuenta",
     signOut: "Cerrar sesión",
     signingOut: "Cerrando sesión…",
   },
