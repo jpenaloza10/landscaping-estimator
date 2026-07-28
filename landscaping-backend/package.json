@@ -10,9 +10,9 @@
     "start": "prisma migrate deploy && node dist/index.js",
     "migrate:dev": "prisma migrate dev",
     "generate": "prisma generate",
-    "migrate:prod": "dotenv -e .env.production -- npx prisma migrate deploy",
-    "db:push:prod": "dotenv -e .env.production -- npx prisma db push",
-    "start:prod": "dotenv -e .env.production -- node dist/index.js",
+    "migrate:prod": "dotenv -e .env -- npx prisma migrate deploy",
+    "db:push:prod": "dotenv -e .env -- npx prisma db push",
+    "start:prod": "dotenv -e .env -- node dist/index.js",
     "check:assemblies": "ts-node scripts/checkAssemblies.ts"
   },
   "dependencies": {
