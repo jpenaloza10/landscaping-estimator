@@ -4,8 +4,10 @@ node_modules
 # Dependencies
 node_modules/
 
-# Environment variables
+# Environment variables — never commit these
 .env
+.env.*
+!.env.example
 
 # Prisma generated client
 /prisma/generated/

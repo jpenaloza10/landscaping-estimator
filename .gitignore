@@ -23,10 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment Variables
+# Environment Variables — never commit these
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+
+# Agent worktrees
+.claude/worktrees/
 
 # Cookies / session files — never commit these
 cookies.txt
